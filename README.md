@@ -1,4 +1,3 @@
-[README.md](https://github.com/user-attachments/files/32311726/README.md)
 # PurgeCompact
 
 **PurgeCompact** is an open-source Thunderbird MailExtension designed to quickly empty Junk, purge Trash, and compact message folders across multiple accounts in a single pass—with real-time disk recovery statistics.
