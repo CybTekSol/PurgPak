@@ -1,0 +1,62 @@
+[
+  {
+    "namespace": "PurgeCompactAPI",
+    "functions": [
+      {
+        "name": "emptyTrash",
+        "type": "function",
+        "description": "Empties trash for the target folder/account and returns recovered metrics.",
+        "async": true,
+        "parameters": [
+          {
+            "name": "folder",
+            "type": "any",
+            "description": "WebExtension MailFolder object"
+          }
+        ]
+      },
+      {
+        "name": "emptyJunk",
+        "type": "function",
+        "description": "Empties junk for the target folder/account and returns recovered metrics.",
+        "async": true,
+        "parameters": [
+          {
+            "name": "folder",
+            "type": "any",
+            "description": "WebExtension MailFolder object"
+          }
+        ]
+      },
+      {
+        "name": "compactFolder",
+        "type": "function",
+        "description": "Forces a physical compact of the target folder/account database.",
+        "async": true,
+        "parameters": [
+          {
+            "name": "folder",
+            "type": "any",
+            "description": "WebExtension MailFolder object"
+          }
+        ]
+      },
+      {
+        "name": "showNotification",
+        "type": "function",
+        "description": "Bypasses WebExtension sandbox to trigger a native OS notification.",
+        "async": true,
+        "parameters": [
+          {
+            "name": "title",
+            "type": "string"
+          },
+          {
+            "name": "message",
+            "type": "string"
+          }
+        ]
+      }
+    ]
+  }
+]

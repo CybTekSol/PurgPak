@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>PurgeCompact Settings</title>
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>PurgeCompact Configuration</h1>
+      <span class="version">v1.3.0 by CybTekSol</span>
+    </header>
+
+    <section class="card">
+      <h2>Actions</h2>
+      <label class="toggle-row">
+        <input type="checkbox" id="clean_junk">
+        <span>Empty Junk Folders</span>
+      </label>
+      <label class="toggle-row">
+        <input type="checkbox" id="clean_trash">
+        <span>Empty Trash Folders</span>
+      </label>
+      <label class="toggle-row">
+        <input type="checkbox" id="run_compact">
+        <span>Compact Folders (Reclaim Disk Space)</span>
+      </label>
+    </section>
+
+    <section class="card">
+      <h2>Notifications</h2>
+      <label class="toggle-row">
+        <input type="checkbox" id="notify_summary">
+        <span>Show summary notification upon completion</span>
+      </label>
+    </section>
+
+    <section class="card">
+      <h2>Target Accounts</h2>
+      <p class="description">Select the accounts to process when clicking the PurgeCompact toolbar button:</p>
+      <div id="accounts_container" class="checkbox-group">
+        <!-- Dynamically injected account checkboxes -->
+      </div>
+    </section>
+
+    <footer>
+      <button id="save_btn" class="primary-btn">Save Settings</button>
+      <span id="status_msg" class="status-msg"></span>
+    </footer>
+  </div>
+
+  <script type="module" src="options.js"></script>
+</body>
+</html>
