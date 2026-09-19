@@ -1,22 +1,22 @@
 @media (prefers-color-scheme: dark) {
     :root {
-        --border-color: color-mix(in srgb, var(--background-color-box) 93%, white);
-        --background-color: color-mix(in srgb, var(--background-color-box) 90%, white);
-        --hover-color: color-mix(in srgb, var(--background-color-box) 90%, black);
+        --border-color: color-mix(in srgb, var(--background-color-box, #222) 93%, white);
+        --background-color: color-mix(in srgb, var(--background-color-box, #222) 90%, white);
+        --hover-color: color-mix(in srgb, var(--background-color-box, #222) 90%, black);
     }
 }
 
 @media (prefers-color-scheme: light) {
     :root {
-        --border-color: color-mix(in srgb, var(--background-color-box) 93%, black);
-        --background-color: color-mix(in srgb, var(--background-color-box) 90%, black);
-        --hover-color: color-mix(in srgb, var(--background-color-box) 90%, white);
+        --border-color: color-mix(in srgb, var(--background-color-box, #fff) 93%, black);
+        --background-color: color-mix(in srgb, var(--background-color-box, #fff) 90%, black);
+        --hover-color: color-mix(in srgb, var(--background-color-box, #fff) 90%, white);
     }
 }
 
 html {
     color-scheme: light dark;
-    background-color: var(--background-color-box);
+    background-color: var(--background-color-box, Window);
 }
 
 fieldset {
@@ -46,6 +46,12 @@ body {
 
 .center {
     justify-content: center;
+}
+
+.checkbox-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px; /* Adds a little breathing room between each account */
 }
 
 .tree_table {
@@ -82,6 +88,7 @@ button {
     padding: 3px 10px;
     margin: 0px;
     filter: brightness(85%);
+    cursor: pointer;
 }
 
 #tabList li:focus,
