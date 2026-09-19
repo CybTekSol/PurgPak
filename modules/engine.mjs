@@ -13,30 +13,67 @@ function formatBytes(bytes) {
 function displaySummary(stats) {
   try {
     const msg = `Purged ${stats.messages} messages.\nRecovered ${formatBytes(stats.bytes)} of disk space.`;
-    console.info("PurgeCompact: Summary Result ->", msg);
+    console.info("PurgPak: Summary Result ->", msg);
 
     // Audio playback directly from extension assets
     let audio = new Audio(browser.runtime.getURL("sounds/notify.mp3"));
-    audio.play().catch(err => console.warn("PurgeCompact: Audio playback failed:", err));
+    audio.play().catch(err => console.warn("PurgPak: Audio playback failed:", err));
 
     // XPCOM Alert bypass
-    if (browser.PurgeCompactAPI && browser.PurgeCompactAPI.showNotification) {
-      browser.PurgeCompactAPI.showNotification("PurgeCompact Finished", msg);
+    if (browser.PurgPakAPI && browser.PurgPakAPI.showNotification) {
+      browser.PurgPakAPI.showNotification("PurgPak Finished", msg);
     } else {
       // Standard fallback if bridge is unavailable
-      browser.notifications.create("purgecompact-summary", {
+      browser.notifications.create("purgpak-summary", {
         type: "basic",
-        title: "PurgeCompact Finished",
+        title: "PurgPak Finished",
         message: msg,
-        iconUrl: "icons/icon32.png"
+        iconUrl: "icons/icon-32.png"
       }).catch(() => {});
     }
   } catch (ex) {
-    console.error("PurgeCompact: Error displaying summary:", ex);
+    console.error("PurgPak: Error displaying summary:", ex);
   }
 }
 
-export async function runPurgeCompact() {
+// Recursive function to dig into all subfolders
+async function processFolder(folder, prefs, totalStats) {
+console.info(`EVALUATING FOLDER: "${folder.name}" | TYPE: "${folder.type}" | PATH: "${folder.path}"`);
+  // Clean Junk
+  if (prefs.clean_junk && (folder.type === "junk" || folder.name.toLowerCase() === "junk" || folder.name.toLowerCase() === "spam")) {
+    let res = await browser.PurgPakAPI.emptyJunk(folder);
+    if (res) {
+      totalStats.messages += res.messages || 0;
+      totalStats.bytes += res.bytes || 0;
+    }
+  }
+
+  // Clean Trash
+  if (prefs.clean_trash && (folder.type === "trash" || folder.name.toLowerCase() === "trash")) {
+    let res = await browser.PurgPakAPI.emptyTrash(folder);
+    if (res) {
+      totalStats.messages += res.messages || 0;
+      totalStats.bytes += res.bytes || 0;
+    }
+  }
+
+  // Compact
+  if (prefs.run_compact) {
+    let res = await browser.PurgPakAPI.compactFolder(folder);
+    if (res) {
+      totalStats.bytes += res.bytes || 0;
+    }
+  }
+
+  // If this folder has subfolders, recursively process them
+  if (folder.subFolders && folder.subFolders.length > 0) {
+    for (let sub of folder.subFolders) {
+      await processFolder(sub, prefs, totalStats);
+    }
+  }
+}
+
+export async function runPurgPak() {
   const prefs = await getPreferences();
   let accounts = await browser.accounts.list();
 
@@ -51,36 +88,13 @@ export async function runPurgeCompact() {
     for (let account of targets) {
       if (!account.folders) continue;
 
-      for (let folder of account.folders) {
-        // Clean Junk
-        if (prefs.clean_junk && (folder.type === "junk" || folder.name.toLowerCase() === "junk")) {
-          let res = await browser.PurgeCompactAPI.emptyJunk(folder);
-          if (res) {
-            totalStats.messages += res.messages || 0;
-            totalStats.bytes += res.bytes || 0;
-          }
-        }
-
-        // Clean Trash
-        if (prefs.clean_trash && (folder.type === "trash" || folder.name.toLowerCase() === "trash")) {
-          let res = await browser.PurgeCompactAPI.emptyTrash(folder);
-          if (res) {
-            totalStats.messages += res.messages || 0;
-            totalStats.bytes += res.bytes || 0;
-          }
-        }
-
-        // Compact
-        if (prefs.run_compact) {
-          let res = await browser.PurgeCompactAPI.compactFolder(folder);
-          if (res) {
-            totalStats.bytes += res.bytes || 0;
-          }
-        }
+      for (let rootFolder of account.folders) {
+        // Pass the root folder into the recursive loop
+        await processFolder(rootFolder, prefs, totalStats);
       }
     }
   } catch (err) {
-    console.error("PurgeCompact: Error during account traversal:", err);
+    console.error("PurgPak: Error during account traversal:", err);
   } finally {
     if (prefs.notify_summary) {
       displaySummary(totalStats);
