@@ -1,12 +1,12 @@
 "use strict";
 
-import { runPurgeCompact } from "./modules/engine.mjs";
+import { runPurgPak } from "./modules/engine.mjs";
 
 browser.browserAction.onClicked.addListener(async () => {
-  console.info("PurgeCompact: Execution initiated by user.");
+  console.info("PurgPak: Execution initiated by user.");
   try {
-    await runPurgeCompact();
+    await runPurgPak();
   } catch (err) {
-    console.error("PurgeCompact: Execution failed:", err);
+    console.error("PurgPak: Execution failed:", err);
   }
 });

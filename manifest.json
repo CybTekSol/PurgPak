@@ -1,14 +1,13 @@
 {
   "manifest_version": 2,
-  "name": "PurgeCompact",
-  "version": "1.3.0",
-  "author": "CybTekSol",
-  "description": "Purge Junk/Trash and compact mail folders across multiple accounts with disk space summaries.",
+  "name": "PurgPak",
+  "version": "1.4.0",
+  "author": "CybTekSol [ https://github.com/CybTekSol ]",
+  "description": "Purge Junk/Spam/Trash and compact mail folders across multiple accounts with disk space summaries.",
   "applications": {
     "gecko": {
-      "id": "purgecompact@cybteksol.github.com",
-      "strict_min_version": "128.0",
-      "strict_max_version": "156.*"
+      "id": "purgpak@cybteksol.github.com",
+      "strict_min_version": "128.0"
     }
   },
   "permissions": [
@@ -19,11 +18,12 @@
     "notifications"
   ],
   "browser_action": {
-    "default_title": "Run PurgeCompact",
+    "default_title": "Run PurgPak",
     "default_icon": {
-      "16": "icons/icon16.png",
-      "32": "icons/icon32.png",
-      "48": "icons/icon48.png"
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png",
+      "48": "icons/icon-48.png",
+      "64": "icons/icon-64.png"
     }
   },
   "options_ui": {
@@ -34,18 +34,19 @@
     "page": "background.html"
   },
   "experiment_apis": {
-    "PurgeCompactAPI": {
-      "schema": "api/PurgeCompact/schema.json",
+    "PurgPakAPI": {
+      "schema": "api/schema.json",
       "parent": {
         "scopes": ["addon_parent"],
-        "paths": [["PurgeCompactAPI"]],
-        "script": "api/PurgeCompact/implementation.js"
+        "paths": [["PurgPakAPI"]],
+        "script": "api/implementation.js"
       }
     }
   },
   "icons": {
-    "16": "icons/icon16.png",
-    "32": "icons/icon32.png",
-    "48": "icons/icon48.png"
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "64": "icons/icon-64.png"
   }
 }
