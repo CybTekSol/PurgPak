@@ -1,8 +1,8 @@
-# PurgeCompact
+# PurgPak (formerly PurgeCompact)
 
-**PurgeCompact** is an open-source Thunderbird MailExtension designed to quickly empty Junk, purge Trash, and compact message folders across multiple accounts in a single pass—with real-time disk recovery statistics.
+**PurgPak** is an open-source Thunderbird MailExtension designed to quickly empty Junk, purge Trash, and compact message folders across multiple accounts in a single pass—with real-time disk recovery statistics.
 
-Developed and maintained by **CybTekSol** as a modern, lightweight successor to legacy account-cleaning utilities.
+Developed and maintained by **CybTekSol [ https://github.com/CybTekSol ]** as a modern, lightweight successor to legacy account-cleaning utilities.
 
 ---
 
@@ -11,7 +11,7 @@ Developed and maintained by **CybTekSol** as a modern, lightweight successor to 
 > **DISCLAIMER:**  
 > This extension is provided **as-is**, free of charge, under the GNU General Public License v3.0 (GPL-3.0).  
 >
-> Because Thunderbird does not provide native WebExtension APIs for physical database compacting, PurgeCompact relies on internal Mozilla XPCOM / Experiment APIs. Major Thunderbird ESR upgrades frequently alter internal Mozilla modules and may temporarily break functionality.
+> Because Thunderbird does not provide native WebExtension APIs for physical database compacting, PurgPak relies on internal Mozilla XPCOM / Experiment APIs. Major Thunderbird ESR upgrades frequently alter internal Mozilla modules and may temporarily break functionality.
 >
 > **Maintenance is best-effort.** The codebase is structured using a hardened "Thin Bridge" pattern to minimize maintenance overhead. Community bug reports, feedback, and Pull Requests are welcome.
 
@@ -19,7 +19,7 @@ Developed and maintained by **CybTekSol** as a modern, lightweight successor to 
 
 ## Features
 
-- **Multi-Account Processing:** Empty junk, trash, and compact multiple accounts or select folders simultaneously.
+- **Multi-Account Processing:** Empty junk, spam, trash, and compact multiple accounts or select folders simultaneously.
 - **Efficiency Checks:** Evaluates `expungedBytes` before compacting, skipping folders that don't require maintenance to save unnecessary SSD write cycles.
 - **Accurate Recovery Stats:** Utilizes asynchronous `nsIUrlListener` hooks to pause and accurately calculate the exact physical disk space freed after native C++ disk writes complete.
 - **Resilient Notification Delivery:** Bypasses OS-level Action Center quirks (like those in Windows 10 IoT LTSC or lightweight Linux DEs) by drawing visual summaries directly into Thunderbird's native `mail:3pane` notification bar.
@@ -29,27 +29,27 @@ Developed and maintained by **CybTekSol** as a modern, lightweight successor to 
 
 ## Compatibility
 
-* **Thunderbird Version:** 128.0 to 156.*
+* **Thunderbird Version:** 128.0 - 160.*
 * **OS Tested:** Windows 10/11 (including IoT Enterprise / LTSC), Linux (LMDE7, Arch/EndeavourOS), macOS.
 
 ---
 
 ## Architecture: The "Thin Bridge"
 
-PurgeCompact utilizes a hybrid "Thin Bridge" pattern to survive Thunderbird's rapid release cycle. The UI, options, and audio logic exist safely within sandboxed WebExtension ES modules, while low-level folder operations (`emptyTrash`, `emptyJunk`, `compactFolder`) are executed via a minimal, self-healing XPCOM experiment (`implementation.js`). 
+PurgPak utilizes a hybrid "Thin Bridge" pattern to survive Thunderbird's rapid release cycle. The UI, options, and audio logic exist safely within sandboxed WebExtension ES modules, while low-level folder operations (`emptyTrash`, `emptyJunk`, `compactFolder`) are executed via a minimal, self-healing XPCOM experiment (`implementation.js`). 
 
 ---
 
 ## Installation
 
 ### Manual Install (.xpi)
-1. Download the latest `PurgeCompact-v1.3.0.xpi` from the [Releases](https://github.com/CybTekSol/PurgeCompact/releases) section.
+1. Download the latest `PurgPak-v1.4.0.xpi` from the [Releases](https://github.com/CybTekSol/PurgPak/releases) section.
 2. In Thunderbird, open **Tools > Add-ons and Themes** (or press `Ctrl + Shift + A`).
 3. Click the gear icon in the top right and select **Install Add-on From File...**
 4. Select the downloaded `.xpi` file and confirm installation.
 
 > **Note for Windows IoT / LTSC & Linux Desktop Users:** 
-> As of version 1.3.0, manual `user.js` configurations (such as modifying `alerts.useSystemBackend`) are **no longer required**. PurgeCompact now completely bypasses the OS notification daemon and renders its summaries natively inside the Thunderbird application window.
+> As of version 1.4.0, manual `user.js` configurations (such as modifying `alerts.useSystemBackend`) are **no longer required**. PurgPak now completely bypasses the OS notification daemon and renders its summaries natively inside the Thunderbird application window.
 
 ---
 
