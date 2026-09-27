@@ -43,13 +43,19 @@ PurgPak utilizes a hybrid "Thin Bridge" pattern to survive Thunderbird's rapid r
 ## Installation
 
 ### Manual Install (.xpi)
-1. Download the latest `PurgPak-v1.4.0.xpi` from the [Releases](https://github.com/CybTekSol/PurgPak/releases) section.
+1. Download the latest `PurgPak-v1.4.1.xpi` from the [Releases](https://github.com/CybTekSol/PurgPak/releases) section.
 2. In Thunderbird, open **Tools > Add-ons and Themes** (or press `Ctrl + Shift + A`).
 3. Click the gear icon in the top right and select **Install Add-on From File...**
 4. Select the downloaded `.xpi` file and confirm installation.
 
 > **Note for Windows IoT / LTSC & Linux Desktop Users:** 
 > As of version 1.4.0, manual `user.js` configurations (such as modifying `alerts.useSystemBackend`) are **no longer required**. PurgPak now completely bypasses the OS notification daemon and renders its summaries natively inside the Thunderbird application window.
+
+---
+
+## Changes in version 1.4.1:
+
+### The Toolbar Button has been changed to simply "PurgPak" instead of "Run PurgPak" at user BY-Joe's request. Code remains unaltered.
 
 ---
 

@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "PurgPak",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "author": "CybTekSol [ https://github.com/CybTekSol ]",
   "description": "Purge Junk/Spam/Trash and compact mail folders across multiple accounts with disk space summaries.",
   "applications": {
@@ -18,7 +18,7 @@
     "notifications"
   ],
   "browser_action": {
-    "default_title": "Run PurgPak",
+    "default_title": "PurgPak",
     "default_icon": {
       "16": "icons/icon-16.png",
       "32": "icons/icon-32.png",
