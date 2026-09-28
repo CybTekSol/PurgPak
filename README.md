@@ -23,7 +23,7 @@ Developed and maintained by **CybTekSol [ https://github.com/CybTekSol ]** as a 
 - **Efficiency Checks:** Evaluates `expungedBytes` before compacting, skipping folders that don't require maintenance to save unnecessary SSD write cycles.
 - **Accurate Recovery Stats:** Utilizes asynchronous `nsIUrlListener` hooks to pause and accurately calculate the exact physical disk space freed after native C++ disk writes complete.
 - **Resilient Notification Delivery:** Bypasses OS-level Action Center quirks (like those in Windows 10 IoT LTSC or lightweight Linux DEs) by drawing visual summaries directly into Thunderbird's native `mail:3pane` notification bar.
-- **Audio Feedback:** Includes a custom HTML5 audio chime on completion.
+- **Audio Feedback:** Includes a custom HTML5 audio chime on completion, which can be independently toggled on or off in the extension settings.
 
 ---
 
@@ -43,7 +43,7 @@ PurgPak utilizes a hybrid "Thin Bridge" pattern to survive Thunderbird's rapid r
 ## Installation
 
 ### Manual Install (.xpi)
-1. Download the latest `PurgPak-v1.4.1.xpi` from the [Releases](https://github.com/CybTekSol/PurgPak/releases) section.
+1. Download the latest `PurgPak-v1.4.2.xpi` from the [Releases](https://github.com/CybTekSol/PurgPak/releases) section.
 2. In Thunderbird, open **Tools > Add-ons and Themes** (or press `Ctrl + Shift + A`).
 3. Click the gear icon in the top right and select **Install Add-on From File...**
 4. Select the downloaded `.xpi` file and confirm installation.
@@ -53,9 +53,13 @@ PurgPak utilizes a hybrid "Thin Bridge" pattern to survive Thunderbird's rapid r
 
 ---
 
-## Changes in version 1.4.1:
+## Changelog
 
-### The Toolbar Button has been changed to simply "PurgPak" instead of "Run PurgPak" at user BY-Joe's request. Code remains unaltered.
+### Changes in version 1.4.2:
+* Added an independent **Play notification sound upon completion** toggle in the PurgPak Configuration settings at user request, allowing users to mute the completion chime while keeping visual summary banners active (or vice versa).
+
+### Changes in version 1.4.1:
+* The Toolbar Button has been changed to simply "PurgPak" instead of "Run PurgPak" at user BY-Joe's request. Code remains unaltered.
 
 ---
 
