@@ -66,7 +66,7 @@ PurgPak utilizes a hybrid "Thin Bridge" pattern to survive Thunderbird's rapid r
 ## Changelog
 
 ### Changes in version 1.4.2:
-* Added an independent **Play notification sound upon completion** toggle in the PurgPak Configuration settings at user request, allowing users to mute the completion chime while keeping visual summary banners active (or vice versa).
+* Added an independent **Show summary notification upon completion** toggle and an independent **Play notification sound upon completion** toggle in the PurgPak Configuration settings at user request, allowing users to mute the completion chime while keeping visual summary banners active (or vice versa) or to enable/disable both.
 
 ### Changes in version 1.4.1:
 * The Toolbar Button has been changed to simply "PurgPak" instead of "Run PurgPak" at user BY-Joe's request. Code remains unaltered.
