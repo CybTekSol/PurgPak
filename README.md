@@ -9,7 +9,7 @@ Developed and maintained by **CybTekSol [ https://github.com/CybTekSol ]** as a 
 ## Important Notice & Support Policy
 
 > **DISCLAIMER:**  
-> This extension is provided **as-is**, free of charge, under the GNU General Public License v3.0 (GPL-3.0).  
+> This extension is provided **AS-IS**, free of charge, under the GNU General Public License v3.0 (GPL-3.0).  
 >
 > Because Thunderbird does not provide native WebExtension APIs for physical database compacting, PurgPak relies on internal Mozilla XPCOM / Experiment APIs. Major Thunderbird ESR upgrades frequently alter internal Mozilla modules and may temporarily break functionality.
 >
@@ -29,7 +29,7 @@ Developed and maintained by **CybTekSol [ https://github.com/CybTekSol ]** as a 
 
 ## Compatibility
 
-* **Thunderbird Version:** 128.0 - 160.*
+* **Thunderbird Version:** 128.0 and Newer
 * **OS Tested:** Windows 10/11 (including IoT Enterprise / LTSC), Linux (LMDE7, Arch/EndeavourOS), macOS.
 
 ---
@@ -50,6 +50,16 @@ PurgPak utilizes a hybrid "Thin Bridge" pattern to survive Thunderbird's rapid r
 
 > **Note for Windows IoT / LTSC & Linux Desktop Users:** 
 > As of version 1.4.0, manual `user.js` configurations (such as modifying `alerts.useSystemBackend`) are **no longer required**. PurgPak now completely bypasses the OS notification daemon and renders its summaries natively inside the Thunderbird application window.
+
+---
+
+## Configuration Settings
+
+1. In Thunderbird, open **Tools > Add-ons and Themes** (or press `Ctrl + Shift + A`).
+2. Scroll to find PurgPak in the list of Add-ons.
+3. Click the "Wrench" icon on the right-side of the PurgPak entry in the list to access PurgPak's currently available "Options".
+4. ALL available settings for accounts and functions are controlled by "ticking" or "unticking" their respective toggle box.
+5. ENJOY your reclaimed time and disk space!
 
 ---
 
