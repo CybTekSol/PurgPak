@@ -11,6 +11,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("clean_trash").checked = prefs.clean_trash;
   document.getElementById("run_compact").checked = prefs.run_compact;
   document.getElementById("notify_summary").checked = prefs.notify_summary;
+  document.getElementById("play_sound").checked = prefs.play_sound;
 
   // Render accounts list
   const container = document.getElementById("accounts_container");
@@ -46,6 +47,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       clean_trash: document.getElementById("clean_trash").checked,
       run_compact: document.getElementById("run_compact").checked,
       notify_summary: document.getElementById("notify_summary").checked,
+      play_sound: document.getElementById("play_sound").checked,
       target_accounts: selectedAccounts
     };
 
