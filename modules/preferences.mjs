@@ -3,6 +3,7 @@
 const DEFAULT_PREFERENCES = {
   confirm_before_run: false,
   notify_summary: true,
+  play_sound: true,
   clean_junk: true,
   clean_trash: true,
   run_compact: true,

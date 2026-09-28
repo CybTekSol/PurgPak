@@ -10,26 +10,30 @@ function formatBytes(bytes) {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + " " + sizes[i];
 }
 
-function displaySummary(stats) {
+function displaySummary(stats, prefs) {
   try {
-    const msg = `Purged ${stats.messages} messages.\nRecovered ${formatBytes(stats.bytes)} of disk space.`;
+    const msg = `Purged ${(stats.messages)} messages.\nRecovered ${(formatBytes(stats.bytes))} of disk space.`;
     console.info("PurgPak: Summary Result ->", msg);
 
-    // Audio playback directly from extension assets
-    let audio = new Audio(browser.runtime.getURL("sounds/notify.mp3"));
-    audio.play().catch(err => console.warn("PurgPak: Audio playback failed:", err));
+    // Audio playback directly from extension assets (if enabled in settings)
+    if (prefs.play_sound) {
+      let audio = new Audio(browser.runtime.getURL("sounds/notify.mp3"));
+      audio.play().catch(err => console.warn("PurgPak: Audio playback failed:", err));
+    }
 
-    // XPCOM Alert bypass
-    if (browser.PurgPakAPI && browser.PurgPakAPI.showNotification) {
-      browser.PurgPakAPI.showNotification("PurgPak Finished", msg);
-    } else {
-      // Standard fallback if bridge is unavailable
-      browser.notifications.create("purgpak-summary", {
-        type: "basic",
-        title: "PurgPak Finished",
-        message: msg,
-        iconUrl: "icons/icon-32.png"
-      }).catch(() => {});
+    // XPCOM Alert bypass (if visual summary is enabled in settings)
+    if (prefs.notify_summary) {
+      if (browser.PurgPakAPI && browser.PurgPakAPI.showNotification) {
+        browser.PurgPakAPI.showNotification("PurgPak Finished", msg);
+      } else {
+        // Standard fallback if bridge is unavailable
+        browser.notifications.create("purgpak-summary", {
+          type: "basic",
+          title: "PurgPak Finished",
+          message: msg,
+          iconUrl: "icons/icon-32.png"
+        }).catch(() => {});
+      }
     }
   } catch (ex) {
     console.error("PurgPak: Error displaying summary:", ex);
@@ -38,7 +42,6 @@ function displaySummary(stats) {
 
 // Recursive function to dig into all subfolders
 async function processFolder(folder, prefs, totalStats) {
-console.info(`EVALUATING FOLDER: "${folder.name}" | TYPE: "${folder.type}" | PATH: "${folder.path}"`);
   // Clean Junk
   if (prefs.clean_junk && (folder.type === "junk" || folder.name.toLowerCase() === "junk" || folder.name.toLowerCase() === "spam")) {
     let res = await browser.PurgPakAPI.emptyJunk(folder);
@@ -89,16 +92,13 @@ export async function runPurgPak() {
       if (!account.folders) continue;
 
       for (let rootFolder of account.folders) {
-        // Pass the root folder into the recursive loop
         await processFolder(rootFolder, prefs, totalStats);
       }
     }
   } catch (err) {
     console.error("PurgPak: Error during account traversal:", err);
   } finally {
-    if (prefs.notify_summary) {
-      displaySummary(totalStats);
-    }
+    displaySummary(totalStats, prefs);
   }
 
   return totalStats;
