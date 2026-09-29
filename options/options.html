@@ -9,24 +9,8 @@
   <div class="container">
     <header>
       <h1>PurgPak Configuration</h1>
-      <span class="version">v1.4.2 by CybTekSol [ https://github.com/CybTekSol ]</span>
+      <span class="version">v1.5.0 by CybTekSol [ https://github.com/CybTekSol ]</span>
     </header>
-
-    <section class="card">
-      <h2>Actions</h2>
-      <label class="toggle-row">
-        <input type="checkbox" id="clean_junk">
-        <span>Empty Junk/Spam Folders</span>
-      </label>
-      <label class="toggle-row">
-        <input type="checkbox" id="clean_trash">
-        <span>Empty Trash Folders</span>
-      </label>
-      <label class="toggle-row">
-        <input type="checkbox" id="run_compact">
-        <span>Compact Folders (Reclaim Disk Space)</span>
-      </label>
-    </section>
 
     <section class="card">
       <h2>Notifications</h2>
@@ -41,11 +25,21 @@
     </section>
 
     <section class="card">
-      <h2>Target Accounts</h2>
-      <p class="description">Select the accounts to process when clicking the PurgPak toolbar button:</p>
-      <div id="accounts_container" class="checkbox-group">
-        <!-- Dynamically injected account checkboxes -->
-      </div>
+      <h2>Per-Account Processing Rules</h2>
+      <p class="description">Enable PurgPak for specific accounts and customize what actions run for each.</p>
+      <table class="account-table" id="accounts_table">
+        <thead>
+          <tr>
+            <th>Account</th>
+            <th>Empty Junk</th>
+            <th>Empty Trash</th>
+            <th>Compact Folders</th>
+          </tr>
+        </thead>
+        <tbody id="accounts_tbody">
+          <!-- Dynamically injected account rows -->
+        </tbody>
+      </table>
     </section>
 
     <footer>

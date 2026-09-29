@@ -17,75 +17,152 @@
 html {
     color-scheme: light dark;
     background-color: var(--background-color-box, Window);
+    font-family: message-box, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    font-size: 13px; /* Forces a compact system-like base font */
 }
 
+body {
+    margin: 10px; /* Reduced from 1em for a tighter edge fit */
+    color: var(--text-color, WindowText);
+}
+
+/* ==========================================================================
+   Typography Overrides (Compact Headings)
+   ========================================================================== */
+h1 {
+    font-size: 1.3em;
+    margin: 0 0 2px 0;
+}
+
+h2 {
+    font-size: 1.1em;
+    margin: 0 0 6px 0;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 2px;
+}
+
+.version, .description {
+    font-size: 0.9em;
+    opacity: 0.8;
+    margin: 0 0 8px 0;
+    display: block;
+}
+
+/* ==========================================================================
+   Modern Cards & Toggles (From options.html)
+   ========================================================================== */
+.card {
+    margin-bottom: 12px;
+    padding: 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: var(--background-color);
+}
+
+.toggle-row {
+    display: flex;
+    align-items: center;
+    margin-bottom: 4px; /* Tighter stacking */
+    font-size: 0.95em;
+}
+
+.toggle-row input {
+    margin: 0 6px 0 0;
+}
+
+.checkbox-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px; /* Reduced from 8px */
+}
+
+/* ==========================================================================
+   Account Table Grid
+   ========================================================================== */
+.account-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 8px;
+    font-size: 0.95em; /* Slightly smaller text for grid density */
+    background: rgba(128, 128, 128, 0.05);
+}
+
+.account-table th, .account-table td {
+    padding: 4px 6px; /* Much tighter padding than original 10px */
+    text-align: center;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.account-table th {
+    background: rgba(128, 128, 128, 0.1);
+    font-weight: bold;
+}
+
+.account-table td:first-child, .account-table th:first-child {
+    text-align: left;
+}
+
+.account-name-lbl {
+    font-weight: 500;
+    margin-left: 6px;
+    cursor: pointer;
+}
+
+.disabled-row {
+    opacity: 0.4;
+}
+
+footer {
+    margin-top: 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.status-msg {
+    font-weight: bold;
+    color: #0078d7;
+    font-size: 0.95em;
+}
+
+/* ==========================================================================
+   Legacy Thunderbird UI Elements (Fieldsets, Tabs, Trees)
+   ========================================================================== */
 fieldset {
     border: 1px solid var(--border-color);
-    border-top-width: 26px;
-    margin: 1ex 0 1ex 0;
+    border-top-width: 18px; /* Shrunk from 26px */
+    margin: 6px 0; /* Tighter margins */
+    font-size: 0.95em;
 }
 
 fieldset legend {
     background: var(--border-color);
-    line-height: 26px;
+    line-height: 18px; /* Matched to border top width */
+    padding: 0 6px;
 }
 
-body {
-    margin: 1em;
-}
+.vbox { display: flex; flex-direction: column; }
+.hbox { display: flex; flex-direction: row; }
+.center { justify-content: center; }
 
-.vbox {
-    display: flex;
-    flex-direction: column;
-}
-
-.hbox {
-    display: flex;
-    flex-direction: row;
-}
-
-.center {
-    justify-content: center;
-}
-
-.checkbox-group {
-  display: flex;
-  flex-direction: column;
-  gap: 8px; /* Adds a little breathing room between each account */
-}
-
-.tree_table {
-    width: 100%;
-    border-collapse: collapse;
-}
-
-.tree_checkbox {
-    width: 50px;
-    text-align: center;
-}
-
-.tree_header {
-    border-bottom: 1px solid var(--border-color);
-}
+.tree_table { width: 100%; border-collapse: collapse; font-size: 0.95em; }
+.tree_checkbox { width: 40px; text-align: center; } /* Shrunk from 50px */
+.tree_header { border-bottom: 1px solid var(--border-color); }
 
 button {
     margin: 3px;
+    padding: 3px 10px; /* Tighter button dimensions */
+    font-size: 0.95em;
 }
 
-#tabList {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    cursor: default;
-}
-
+#tabList { list-style: none; margin: 0; padding: 0; cursor: default; font-size: 0.95em; }
 #tabList li {
     background-color: var(--background-color);
     border: 1px solid var(--border-color);
     border-bottom: none;
     display: inline;
     height: 1em;
-    padding: 3px 10px;
+    padding: 2px 8px; /* Shrunk padding */
     margin: 0px;
     filter: brightness(85%);
     cursor: pointer;
@@ -103,13 +180,8 @@ button {
 #tabcontent {
     border: 1px solid var(--border-color);
     margin: 0px;
-    padding: 1em;
+    padding: 10px; /* Reduced from 1em */
 }
 
-[aria-hidden="true"] {
-    display: none;
-}
-
-[aria-hidden="false"] {
-    display: block;
-}
+[aria-hidden="true"] { display: none; }
+[aria-hidden="false"] { display: block; }
