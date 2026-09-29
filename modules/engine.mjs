@@ -13,25 +13,18 @@ function formatBytes(bytes) {
 function displaySummary(stats, prefs) {
   try {
     const msg = `Purged ${(stats.messages)} messages.\nRecovered ${(formatBytes(stats.bytes))} of disk space.`;
-    console.info("PurgPak: Summary Result ->", msg);
 
-    // Audio playback directly from extension assets (if enabled in settings)
     if (prefs.play_sound) {
       let audio = new Audio(browser.runtime.getURL("sounds/notify.mp3"));
       audio.play().catch(err => console.warn("PurgPak: Audio playback failed:", err));
     }
 
-    // XPCOM Alert bypass (if visual summary is enabled in settings)
     if (prefs.notify_summary) {
       if (browser.PurgPakAPI && browser.PurgPakAPI.showNotification) {
         browser.PurgPakAPI.showNotification("PurgPak Finished", msg);
       } else {
-        // Standard fallback if bridge is unavailable
         browser.notifications.create("purgpak-summary", {
-          type: "basic",
-          title: "PurgPak Finished",
-          message: msg,
-          iconUrl: "icons/icon-32.png"
+          type: "basic", title: "PurgPak Finished", message: msg, iconUrl: "icons/icon-32.png"
         }).catch(() => {});
       }
     }
@@ -40,10 +33,12 @@ function displaySummary(stats, prefs) {
   }
 }
 
-// Recursive function to dig into all subfolders
-async function processFolder(folder, prefs, totalStats) {
+async function processFolder(folder, rules, totalStats) {
+  let isJunk = (folder.type === "junk" || folder.name.toLowerCase() === "junk" || folder.name.toLowerCase() === "spam");
+  let isTrash = (folder.type === "trash" || folder.name.toLowerCase() === "trash");
+
   // Clean Junk
-  if (prefs.clean_junk && (folder.type === "junk" || folder.name.toLowerCase() === "junk" || folder.name.toLowerCase() === "spam")) {
+  if (rules.clean_junk && isJunk) {
     let res = await browser.PurgPakAPI.emptyJunk(folder);
     if (res) {
       totalStats.messages += res.messages || 0;
@@ -52,7 +47,7 @@ async function processFolder(folder, prefs, totalStats) {
   }
 
   // Clean Trash
-  if (prefs.clean_trash && (folder.type === "trash" || folder.name.toLowerCase() === "trash")) {
+  if (rules.clean_trash && isTrash) {
     let res = await browser.PurgPakAPI.emptyTrash(folder);
     if (res) {
       totalStats.messages += res.messages || 0;
@@ -61,17 +56,17 @@ async function processFolder(folder, prefs, totalStats) {
   }
 
   // Compact
-  if (prefs.run_compact) {
+  if (rules.run_compact) {
     let res = await browser.PurgPakAPI.compactFolder(folder);
     if (res) {
       totalStats.bytes += res.bytes || 0;
     }
   }
 
-  // If this folder has subfolders, recursively process them
+  // Recursion
   if (folder.subFolders && folder.subFolders.length > 0) {
     for (let sub of folder.subFolders) {
-      await processFolder(sub, prefs, totalStats);
+      await processFolder(sub, rules, totalStats);
     }
   }
 }
@@ -80,19 +75,20 @@ export async function runPurgPak() {
   const prefs = await getPreferences();
   let accounts = await browser.accounts.list();
 
-  let targets = accounts;
-  if (prefs.target_accounts && prefs.target_accounts.length > 0) {
-    targets = accounts.filter(acc => prefs.target_accounts.includes(acc.id));
-  }
-
   let totalStats = { messages: 0, bytes: 0 };
+  let rules = prefs.account_rules || {};
 
   try {
-    for (let account of targets) {
+    for (let account of accounts) {
+      // Bulletproof fallback to ensure undefined values evaluate to true
+      let accRules = rules[account.id] || { enabled: true, clean_junk: true, clean_trash: true, run_compact: true };
+
+      if (!accRules.enabled) continue;
+
       if (!account.folders) continue;
 
       for (let rootFolder of account.folders) {
-        await processFolder(rootFolder, prefs, totalStats);
+        await processFolder(rootFolder, accRules, totalStats);
       }
     }
   } catch (err) {
