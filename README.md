@@ -43,7 +43,7 @@ PurgPak utilizes a hybrid "Thin Bridge" pattern to survive Thunderbird's rapid r
 ## Installation
 
 ### Manual Install (.xpi)
-1. Download the latest `PurgPak-v1.4.2.xpi` from the [Releases](https://github.com/CybTekSol/PurgPak/releases) section.
+1. Download the latest `PurgPak-v1.5.0.xpi` from the [Releases](https://github.com/CybTekSol/PurgPak/releases) section.
 2. In Thunderbird, open **Tools > Add-ons and Themes** (or press `Ctrl + Shift + A`).
 3. Click the gear icon in the top right and select **Install Add-on From File...**
 4. Select the downloaded `.xpi` file and confirm installation.
@@ -65,8 +65,13 @@ PurgPak utilizes a hybrid "Thin Bridge" pattern to survive Thunderbird's rapid r
 
 ## Changelog
 
+### Changes in version 1.5.0:
+* Major feature update! Added the ability to customize Junk/Trash/Compact settings individually for each e-mail account instead of globally (Thanks to user NotARealGit for the request!).
+* Modified the Options UI CSS to provide a much more compact, polished, and readable experience.
+* Note on Upgrading: PurgPak will attempt to automatically migrate your old global settings to the new per-account system. Please review your Options after updating to ensure everything is set to your liking. If your settings look incorrect after the update, simply set your checkboxes and click Save Settings to force a clean refresh of your profile. Please POST any issues you have with this release so I can address them!
+
 ### Changes in version 1.4.2:
-* Added an independent **Show summary notification upon completion** toggle and an independent **Play notification sound upon completion** toggle in the PurgPak Configuration settings at user request, allowing users to mute the completion chime while keeping visual summary banners active (or vice versa) or to enable/disable both.
+* Added an independent **Show summary notification upon completion** toggle and an independent **Play notification sound upon completion** toggle in the PurgPak Configuration settings at user NotARealGit's request, allowing users to mute the completion chime while keeping visual summary banners active (or vice versa) or to enable/disable both.
 
 ### Changes in version 1.4.1:
 * The Toolbar Button has been changed to simply "PurgPak" instead of "Run PurgPak" at user BY-Joe's request. Code remains unaltered.
