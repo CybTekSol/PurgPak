@@ -1,0 +1,36 @@
+# Packaged Extension Builds
+*.xpi
+*.zip
+
+# Sublime Text Workspace Files
+*.sublime-project
+*.sublime-workspace
+
+# Windows OS Files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# macOS / Linux OS Files
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Trash-*
+
+# IDEs and Editors (Optional safeguards)
+.vscode/
+.idea/
+
+# Vim / Terminal IDE Swap Files
+*.swp
+*.swo
+*.swn
+*.swm
+*.swl
+*.swx
+
+# Node/NPM (If you ever add build scripts later)
+node_modules/
+npm-debug.log
