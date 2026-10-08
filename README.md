@@ -5,7 +5,7 @@
 Developed and maintained by **CybTekSol [ https://github.com/CybTekSol ]** as a modern, lightweight successor to legacy account-cleaning utilities.
 
 **DISCLAIMER:**
-This extension is provided free of charge, **AS-IS**, no warranties or guarantees (expressed or implied)... use is at your own risk and is licensed as stated in the README.md located in this repository.
+This extension is provided free of charge, **AS-IS**, no warranties or guarantees (expressed or implied)... use is at your own risk and is licensed as stated in the LICENSE file located in this repository.
 
 ---
 
