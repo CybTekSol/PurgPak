@@ -4,8 +4,6 @@
 
 Developed and maintained by **CybTekSol [ https://github.com/CybTekSol ]** as a modern, lightweight successor to legacy account-cleaning utilities.
 
-**DISCLAIMER:**
-
 ---
 
 ## Important Notice & Support Policy
