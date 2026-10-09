@@ -5,14 +5,13 @@
 Developed and maintained by **CybTekSol [ https://github.com/CybTekSol ]** as a modern, lightweight successor to legacy account-cleaning utilities.
 
 **DISCLAIMER:**
-This extension is provided free of charge, **AS-IS**, no warranties or guarantees (expressed or implied)... use is at your own risk and is licensed as stated in the LICENSE file located in this repository.
 
 ---
 
 ## Important Notice & Support Policy
 
 > **DISCLAIMER:**  
-> This extension is provided **AS-IS**, free of charge, under the GNU General Public License v3.0 (GPL-3.0).  
+> This extension is provided free of charge, **AS-IS**, no warranties or guarantees (expressed or implied)... use is at your own risk and is licensed as stated in the LICENSE file located in this repository.  
 >
 > Because Thunderbird does not provide native WebExtension APIs for physical database compacting, PurgPak relies on internal Mozilla XPCOM / Experiment APIs. Major Thunderbird ESR upgrades frequently alter internal Mozilla modules and may temporarily break functionality.
 >
