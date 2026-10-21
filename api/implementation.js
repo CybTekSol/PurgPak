@@ -22,7 +22,6 @@ try {
 }
 
 try {
-  // In modern Thunderbird, Services is already a global variable
   Services = globalThis.Services || ChromeUtils.importESModule("resource://gre/modules/Services.sys.mjs").Services;
 } catch (e) {
   if (typeof ChromeUtils.import === "function") {
@@ -32,19 +31,24 @@ try {
 
 var PurgPakAPI = class extends ExtensionCommon.ExtensionAPI {
   getAPI(context) {
-    // Helper: Map WebExtension folder payload to native nsIMsgFolder
     function getNativeFolder(folder) {
       if (!folder) return null;
       try {
         if (context.extension.folderManager) {
-          return context.extension.folderManager.get(folder.accountId, folder.path);
+          let found = context.extension.folderManager.get(folder.accountId, folder.path);
+          if (found) return found;
         }
         if (folder.accountId && folder.path) {
           let account = MailServices.accounts.getAccount(folder.accountId);
           if (account && account.incomingServer) {
-            let root = account.incomingServer.rootFolder;
-            if (folder.path === "/") return root;
-            return root.getChildNamed(folder.path.replace(/^\//, ""));
+            let current = account.incomingServer.rootFolder;
+            if (folder.path === "/") return current;
+            let parts = folder.path.replace(/^\//, "").split("/");
+            for (let part of parts) {
+              if (!current) break;
+              current = current.getChildNamed(decodeURIComponent(part));
+            }
+            return current;
           }
         }
       } catch (err) {
@@ -53,7 +57,6 @@ var PurgPakAPI = class extends ExtensionCommon.ExtensionAPI {
       return null;
     }
 
-    // Helper: Measure physical file size of a folder
     function getFolderDiskSize(msgFolder) {
       try {
         if (!msgFolder || !msgFolder.filePath || !msgFolder.filePath.exists()) return 0;
@@ -63,87 +66,125 @@ var PurgPakAPI = class extends ExtensionCommon.ExtensionAPI {
       }
     }
 
+    async function purgeFolderMessages(nativeFolder) {
+      if (!nativeFolder) return { messages: 0, bytes: 0 };
+
+      let initialBytes = getFolderDiskSize(nativeFolder);
+      let deletedCount = 0;
+
+      try {
+        let db = nativeFolder.msgDatabase;
+        let enumerator = nativeFolder.messages;
+        let array = [];
+
+        if (enumerator) {
+          while (enumerator.hasMoreElements()) {
+            let msg = enumerator.getNext().QueryInterface(Ci.nsIMsgDBHdr);
+            array.push(msg);
+          }
+        }
+
+        deletedCount = array.length;
+
+        if (deletedCount > 0) {
+          await new Promise((resolve) => {
+            let settled = false;
+            let finish = () => {
+              if (!settled) {
+                settled = true;
+                resolve();
+              }
+            };
+
+            let win = Services.wm.getMostRecentWindow("mail:3pane");
+            if (win && win.setTimeout) {
+              win.setTimeout(finish, 4000);
+            }
+
+            let copyListener = {
+              QueryInterface: ChromeUtils.generateQI(["nsIUrlListener", "nsIMsgCopyServiceListener"]),
+              OnStartCopy: function() {},
+              OnProgress: function(aProgress, aProgressMax) {},
+              SetMessageKey: function(aKey) {},
+              GetMessageId: function(aMessageId) {},
+              OnStopCopy: function(aStatus) {
+                finish();
+              }
+            };
+
+            try {
+              nativeFolder.deleteMessages(array, null, true, false, copyListener, false);
+            } catch (innerErr) {
+              console.warn("PurgPak: deleteMessages exception:", innerErr);
+              finish();
+            }
+          });
+        }
+      } catch (err) {
+        console.warn("PurgPak: purgeFolderMessages exception:", err);
+      }
+
+      let finalBytes = getFolderDiskSize(nativeFolder);
+
+      return {
+        messages: deletedCount,
+        bytes: Math.max(0, initialBytes - finalBytes)
+      };
+    }
+
     return {
       PurgPakAPI: {
         async emptyTrash(folder) {
           let nativeFolder = getNativeFolder(folder);
           if (!nativeFolder) return { messages: 0, bytes: 0 };
 
-          let initialBytes = getFolderDiskSize(nativeFolder);
-          let initialMsgs = nativeFolder.getTotalMessages(false);
+          let result = await purgeFolderMessages(nativeFolder);
 
-          try {
-            nativeFolder.emptyTrash(null, null);
-          } catch (err) {
-            console.warn("PurgPak: Native emptyTrash exception:", err);
+          if (result.messages === 0) {
+            try {
+              nativeFolder.emptyTrash(null, null);
+            } catch (err) {}
           }
 
-          let finalBytes = getFolderDiskSize(nativeFolder);
-          let finalMsgs = nativeFolder.getTotalMessages(false);
-
-          return {
-            messages: Math.max(0, initialMsgs - finalMsgs),
-            bytes: Math.max(0, initialBytes - finalBytes)
-          };
+          return result;
         },
 
         async emptyJunk(folder) {
           let nativeFolder = getNativeFolder(folder);
           if (!nativeFolder) return { messages: 0, bytes: 0 };
 
-          let initialBytes = getFolderDiskSize(nativeFolder);
-          let initialMsgs = nativeFolder.getTotalMessages(false);
-
-          try {
-            // Force Thunderbird to read the .msf database file from disk
-            let db = nativeFolder.msgDatabase;
-            
-            let enumerator = nativeFolder.messages;
-            // Modern Thunderbird expects a standard JS Array, not an XPCOM mutable array
-            let array = []; 
-
-            if (enumerator) {
-              while (enumerator.hasMoreElements()) {
-                let msg = enumerator.getNext().QueryInterface(Ci.nsIMsgDBHdr);
-                array.push(msg); // Standard push
-              }
-            }
-
-            // Diagnostic log to prove it found the messages
-            console.info(`PurgPak: Found ${array.length} messages in ${folder.name} to delete.`);
-
-            if (array.length > 0) {
-              nativeFolder.deleteMessages(array, null, true, false, null, false);
-            }
-          } catch (err) {
-            console.warn("PurgPak: Native emptyJunk exception:", err);
-          }
-
-          let finalBytes = getFolderDiskSize(nativeFolder);
-          let finalMsgs = nativeFolder.getTotalMessages(false);
-
-          return {
-            messages: Math.max(0, initialMsgs - finalMsgs),
-            bytes: Math.max(0, initialBytes - finalBytes)
-          };
+          return await purgeFolderMessages(nativeFolder);
         },
 
         async compactFolder(folder) {
           let nativeFolder = getNativeFolder(folder);
           if (!nativeFolder) return { messages: 0, bytes: 0 };
 
-          if (nativeFolder.expungedBytes <= 0) {
+          if (!folder._forceCompact && nativeFolder.expungedBytes <= 0) {
             return { messages: 0, bytes: 0 };
           }
 
           let initialBytes = getFolderDiskSize(nativeFolder);
 
           await new Promise((resolve) => {
+            let settled = false;
+            let finish = () => {
+              if (!settled) {
+                settled = true;
+                resolve();
+              }
+            };
+
+            let win = Services.wm.getMostRecentWindow("mail:3pane");
+            if (win && win.setTimeout) {
+              win.setTimeout(finish, 5000);
+            }
+
             let listener = {
               QueryInterface: ChromeUtils.generateQI(["nsIUrlListener"]),
               OnStartRunningUrl: function(url) {},
               OnStopRunningUrl: function(url, exitCode) {
-                resolve();
+                finish();
               }
             };
 
@@ -151,7 +192,7 @@ var PurgPakAPI = class extends ExtensionCommon.ExtensionAPI {
               nativeFolder.compact(listener, null);
             } catch (err) {
               console.warn("PurgPak: Native compact exception:", err);
-              resolve();
+              finish();
             }
           });
 
@@ -165,11 +206,9 @@ var PurgPakAPI = class extends ExtensionCommon.ExtensionAPI {
 
         async showNotification(title, message) {
           try {
-            // Find the active 3-pane Thunderbird window using the globally available Services
             let win = Services.wm.getMostRecentWindow("mail:3pane");
             if (!win) return;
 
-            // Access Thunderbird's main notification box
             let notifyBox = win.gNotificationBox || 
                             win.specialTabs?.msgNotificationBar ||
                             win.document.querySelector("notificationbox");
@@ -177,13 +216,11 @@ var PurgPakAPI = class extends ExtensionCommon.ExtensionAPI {
             if (notifyBox) {
               const notificationId = "purgpak-summary-bar";
 
-              // Remove any existing PurgPak notification banner first
               let existing = notifyBox.getNotificationWithValue(notificationId);
               if (existing) {
                 notifyBox.removeNotification(existing);
               }
 
-              // Append a clean, non-intrusive banner
               let priority = notifyBox.PRIORITY_INFO_HIGH || 5;
               let bannerText = `${title}: ${message.replace(/\n/g, " — ")}`;
 
@@ -196,7 +233,6 @@ var PurgPakAPI = class extends ExtensionCommon.ExtensionAPI {
                 [] 
               );
 
-              // Automatically dismiss after 6 seconds
               if (win.setTimeout) {
                 win.setTimeout(() => {
                   try {
