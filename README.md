@@ -63,6 +63,19 @@ PurgPak utilizes a hybrid "Thin Bridge" pattern to survive Thunderbird's rapid r
 
 ---
 
+## Frequently Asked Questions
+
+**Q: Can PurgPak expunge IMAP messages that are "Just marked as deleted" without restarting Thunderbird?**  
+**A:** Yes! If your IMAP account is set to *When I delete a message > Just mark it as deleted*, those messages linger in your Inbox with a strikethrough until the server receives an `EXPUNGE` command. In Thunderbird's architecture, the **Compact** action is what actually triggers this expunge command. 
+
+To clear this clutter on demand:
+1. Open PurgPak's Options and ensure the **Compact** toggle is enabled for your accounts.
+2. Whenever your Inbox (or Unified Inbox) gets too cluttered with strikethrough emails, simply click the PurgPak toolbar button. 
+
+PurgPak will instantly compact your folders, issuing the `EXPUNGE` command to your server and wiping away the strikethrough messages without ever needing to restart the application.
+
+---
+
 ## Changelog
 
 ### Changes in version 1.5.0:
