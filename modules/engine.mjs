@@ -2,6 +2,15 @@
 
 import { getPreferences } from "./preferences.mjs";
 
+// Expanded matching for GMX.com, international providers, and standard IMAP names
+const JUNK_NAMES = new Set([
+  "junk", "junk e-mail", "junk email", "spam", "spamverdacht", "bulk", "bulk mail"
+]);
+
+const TRASH_NAMES = new Set([
+  "trash", "deleted", "deleted items", "deleted messages", "bin", "papierkorb"
+]);
+
 function formatBytes(bytes) {
   if (!bytes || isNaN(bytes) || bytes === 0) return "0 Bytes";
   const k = 1024, dm = 2;
@@ -33,14 +42,42 @@ function displaySummary(stats, prefs) {
   }
 }
 
-async function processFolder(folder, rules, totalStats) {
-  let isJunk = (folder.type === "junk" || folder.name.toLowerCase() === "junk" || folder.name.toLowerCase() === "spam");
-  let isTrash = (folder.type === "trash" || folder.name.toLowerCase() === "trash");
+function isJunkFolder(folder) {
+  let special = Array.isArray(folder.specialUse) ? folder.specialUse : [];
+  let name = (folder.name || "").trim().toLowerCase();
+  return (folder.type === "junk" || special.includes("junk") || JUNK_NAMES.has(name));
+}
+
+function isTrashFolder(folder) {
+  let special = Array.isArray(folder.specialUse) ? folder.specialUse : [];
+  let name = (folder.name || "").trim().toLowerCase();
+  return (folder.type === "trash" || special.includes("trash") || TRASH_NAMES.has(name));
+}
+
+async function getChildFolders(folder) {
+  if (Array.isArray(folder.subFolders) && folder.subFolders.length > 0) {
+    return folder.subFolders;
+  }
+  if (browser.folders && typeof browser.folders.getSubFolders === "function") {
+    try {
+      return await browser.folders.getSubFolders(folder, false);
+    } catch (e) {
+      return [];
+    }
+  }
+  return [];
+}
+
+async function processFolder(folder, rules, totalStats, forceCompact = false) {
+  let isJunk = isJunkFolder(folder);
+  let isTrash = isTrashFolder(folder);
+  let purgedAny = false;
 
   // Clean Junk
   if (rules.clean_junk && isJunk) {
     let res = await browser.PurgPakAPI.emptyJunk(folder);
     if (res) {
+      if (res.messages > 0) purgedAny = true;
       totalStats.messages += res.messages || 0;
       totalStats.bytes += res.bytes || 0;
     }
@@ -50,6 +87,7 @@ async function processFolder(folder, rules, totalStats) {
   if (rules.clean_trash && isTrash) {
     let res = await browser.PurgPakAPI.emptyTrash(folder);
     if (res) {
+      if (res.messages > 0) purgedAny = true;
       totalStats.messages += res.messages || 0;
       totalStats.bytes += res.bytes || 0;
     }
@@ -57,42 +95,70 @@ async function processFolder(folder, rules, totalStats) {
 
   // Compact
   if (rules.run_compact) {
-    let res = await browser.PurgPakAPI.compactFolder(folder);
+    let payload = Object.assign({}, folder, { _forceCompact: (forceCompact || purgedAny) });
+    let res = await browser.PurgPakAPI.compactFolder(payload);
     if (res) {
       totalStats.bytes += res.bytes || 0;
     }
   }
 
-  // Recursion
-  if (folder.subFolders && folder.subFolders.length > 0) {
-    for (let sub of folder.subFolders) {
-      await processFolder(sub, rules, totalStats);
+  // Recursion (handles both pre-populated subFolders and TB 128+ lazy subFolders)
+  let children = await getChildFolders(folder);
+  if (children && children.length > 0) {
+    for (let sub of children) {
+      await processFolder(sub, rules, totalStats, forceCompact);
     }
   }
 }
 
 export async function runPurgPak() {
   const prefs = await getPreferences();
-  let accounts = await browser.accounts.list();
+  let accounts = await browser.accounts.list(true);
 
   let totalStats = { messages: 0, bytes: 0 };
   let rules = prefs.account_rules || {};
 
   try {
     for (let account of accounts) {
-      // Bulletproof fallback to ensure undefined values evaluate to true
       let accRules = rules[account.id] || { enabled: true, clean_junk: true, clean_trash: true, run_compact: true };
 
       if (!accRules.enabled) continue;
-
       if (!account.folders) continue;
 
       for (let rootFolder of account.folders) {
-        await processFolder(rootFolder, accRules, totalStats);
+        await processFolder(rootFolder, accRules, totalStats, false);
       }
     }
   } catch (err) {
     console.error("PurgPak: Error during account traversal:", err);
+  } finally {
+    displaySummary(totalStats, prefs);
+  }
+
+  return totalStats;
+}
+
+export async function runPurgPakTarget(target) {
+  const prefs = await getPreferences();
+  let totalStats = { messages: 0, bytes: 0 };
+  let rules = prefs.account_rules || {};
+
+  try {
+    if (target.selectedFolder) {
+      let folder = target.selectedFolder;
+      let accRules = rules[folder.accountId] || { enabled: true, clean_junk: true, clean_trash: true, run_compact: true };
+      await processFolder(folder, accRules, totalStats, true);
+    } else if (target.selectedAccount) {
+      let account = await browser.accounts.get(target.selectedAccount.id, true);
+      let accRules = rules[account.id] || { enabled: true, clean_junk: true, clean_trash: true, run_compact: true };
+      if (account && account.folders) {
+        for (let rootFolder of account.folders) {
+          await processFolder(rootFolder, accRules, totalStats, true);
+        }
+      }
+    }
+  } catch (err) {
+    console.error("PurgPak: Error during targeted execution:", err);
   } finally {
     displaySummary(totalStats, prefs);
   }
