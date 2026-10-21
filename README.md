@@ -20,17 +20,26 @@ Developed and maintained by **CybTekSol [ https://github.com/CybTekSol ]** as a 
 ## Features
 
 - **Multi-Account Processing:** Empty junk, spam, trash, and compact multiple accounts or select folders simultaneously.
+
 - **Efficiency Checks:** Evaluates `expungedBytes` before compacting, skipping folders that don't require maintenance to save unnecessary SSD write cycles.
+
 - **Accurate Recovery Stats:** Utilizes asynchronous `nsIUrlListener` hooks to pause and accurately calculate the exact physical disk space freed after native C++ disk writes complete.
+
 - **Resilient Notification Delivery:** Bypasses OS-level Action Center quirks (like those in Windows 10 IoT LTSC or lightweight Linux DEs) by drawing visual summaries directly into Thunderbird's native `mail:3pane` notification bar.
+
 - **Audio Feedback:** Includes a custom HTML5 audio chime on completion, which can be independently toggled on or off in the extension settings.
+
+- **Context Menu & Tools Integration:** Provides a dedicated entry in Thunderbird's top **Tools** menu and right-click context menu options in the folder pane (`Compact folders with PurgPak`) for targeted single-account or single-folder execution.
+
 
 ---
 
 ## Compatibility
 
-* **Thunderbird Version:** 128.0 and Newer
-* **OS Tested:** Windows 10/11 (including IoT Enterprise / LTSC), Linux (LMDE7, Arch/EndeavourOS), macOS.
+- **Thunderbird Version:** 128.0 and Newer
+
+- **OS Tested:** Windows 10/11 (including IoT Enterprise / LTSC), Linux (LMDE7, Arch/EndeavourOS), macOS.
+
 
 ---
 
@@ -43,7 +52,8 @@ PurgPak utilizes a hybrid "Thin Bridge" pattern to survive Thunderbird's rapid r
 ## Installation
 
 ### Manual Install (.xpi)
-1. Download the latest `PurgPak-v1.5.0.xpi` from the [Releases](https://github.com/CybTekSol/PurgPak/releases) section.
+1. Download the latest `PurgPak-v1.6.0.xpi` from the [Releases](https://github.com/CybTekSol/PurgPak/releases) section.
+
 2. In Thunderbird, open **Tools > Add-ons and Themes** (or press `Ctrl + Shift + A`).
 3. Click the gear icon in the top right and select **Install Add-on From File...**
 4. Select the downloaded `.xpi` file and confirm installation.
@@ -56,6 +66,7 @@ PurgPak utilizes a hybrid "Thin Bridge" pattern to survive Thunderbird's rapid r
 ## Configuration Settings
 
 1. In Thunderbird, open **Tools > Add-ons and Themes** (or press `Ctrl + Shift + A`).
+
 2. Scroll to find PurgPak in the list of Add-ons.
 3. Click the "Wrench" icon on the right-side of the PurgPak entry in the list to access PurgPak's currently available "Options".
 4. ALL available settings for accounts and functions are controlled by "ticking" or "unticking" their respective toggle box.
@@ -70,7 +81,8 @@ PurgPak utilizes a hybrid "Thin Bridge" pattern to survive Thunderbird's rapid r
 
 To clear this clutter on demand:
 1. Open PurgPak's Options and ensure the **Compact** toggle is enabled for your accounts.
-2. Whenever your Inbox (or Unified Inbox) gets too cluttered with strikethrough emails, simply click the PurgPak toolbar button. 
+
+2. Whenever your Inbox (or Unified Inbox) gets too cluttered with strikethrough emails, simply click the PurgPak toolbar button (or use the new Tools / right-click folder menu options). 
 
 PurgPak will instantly compact your folders, issuing the `EXPUNGE` command to your server and wiping away the strikethrough messages without ever needing to restart the application.
 
@@ -78,16 +90,26 @@ PurgPak will instantly compact your folders, issuing the `EXPUNGE` command to yo
 
 ## Changelog
 
+### Changes in version 1.6.0:
+- **GMX & International Compatibility:** Expanded folder name matching and integrated modern `specialUse` flag inspection to ensure non-standard or localized IMAP folder setups (such as GMX's `Spamverdacht`, `Bulk Mail`, or nested paths) are correctly detected and processed.
+- **Menu Integration:** Added a dedicated "Run PurgPak" entry to Thunderbird's top **Tools** menu and a right-click folder pane option (`Compact folders with PurgPak`) for executing targeted cleans on specific accounts or folder trees.
+- **Robust IMAP Purging & Compacting:** Enhanced the XPCOM background backend to correctly await asynchronous IMAP message deletions and handle forced compact operations on un-cached folders.
+
 ### Changes in version 1.5.0:
-* Major feature update! Added the ability to customize Junk/Trash/Compact settings individually for each e-mail account instead of globally (Thanks to user NotARealGit for the request!).
-* Modified the Options UI CSS to provide a much more compact, polished, and readable experience.
-* Note on Upgrading: PurgPak will attempt to automatically migrate your old global settings to the new per-account system. Please review your Options after updating to ensure everything is set to your liking. If your settings look incorrect after the update, simply set your checkboxes and click Save Settings to force a clean refresh of your profile. Please POST any issues you have with this release so I can address them!
+- Major feature update! Added the ability to customize Junk/Trash/Compact settings individually for each e-mail account instead of globally (Thanks to user NotARealGit for the request!).
+
+- Modified the Options UI CSS to provide a much more compact, polished, and readable experience.
+
+- Note on Upgrading: PurgPak will attempt to automatically migrate your old global settings to the new per-account system. Please review your Options after updating to ensure everything is set to your liking. If your settings look incorrect after the update, simply set your checkboxes and click Save Settings to force a clean refresh of your profile. Please POST any issues you have with this release so I can address them!
+
 
 ### Changes in version 1.4.2:
-* Added an independent **Show summary notification upon completion** toggle and an independent **Play notification sound upon completion** toggle in the PurgPak Configuration settings at user NotARealGit's request, allowing users to mute the completion chime while keeping visual summary banners active (or vice versa) or to enable/disable both.
+- Added an independent **Show summary notification upon completion** toggle and an independent **Play notification sound upon completion** toggle in the PurgPak Configuration settings at user NotARealGit's request, allowing users to mute the completion chime while keeping visual summary banners active (or vice versa) or to enable/disable both.
+
 
 ### Changes in version 1.4.1:
-* The Toolbar Button has been changed to simply "PurgPak" instead of "Run PurgPak" at user BY-Joe's request. Code remains unaltered.
+- The Toolbar Button has been changed to simply "PurgPak" instead of "Run PurgPak" at user BY-Joe's request. Code remains unaltered.
+
 
 ---
 
