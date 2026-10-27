@@ -21,16 +21,17 @@ Developed and maintained by **CybTekSol [ https://github.com/CybTekSol ]** as a 
 
 - **Multi-Account Processing:** Empty junk, spam, trash, and compact multiple accounts or select folders simultaneously.
 
-- **Efficiency Checks:** Evaluates `expungedBytes` before compacting, skipping folders that don't require maintenance to save unnecessary SSD write cycles.
+- **Deep XPCOM Folder Traversal:** Uses native `rootFolder.descendants` and `nsMsgFolderFlags` bitmask inspection to seamlessly pierce `INBOX.` IMAP namespaces and localized folder structures (such as GMX and European IMAP providers).
 
-- **Accurate Recovery Stats:** Utilizes asynchronous `nsIUrlListener` hooks to pause and accurately calculate the exact physical disk space freed after native C++ disk writes complete.
+- **Explicit IMAP Expunge & Efficiency Checks:** Evaluates `expungedBytes` and scans for `ImapDeleted` (strikethrough) message flags—issuing explicit IMAP `expunge` and `compact` operations where needed while skipping clean local folders to save SSD write cycles.
+
+- **Accurate Recovery Stats:** Utilizes asynchronous `nsIUrlListener` and `nsIMsgCopyServiceListener` hooks to pause and accurately calculate the exact physical disk space freed after native C++ disk writes and server operations complete.
 
 - **Resilient Notification Delivery:** Bypasses OS-level Action Center quirks (like those in Windows 10 IoT LTSC or lightweight Linux DEs) by drawing visual summaries directly into Thunderbird's native `mail:3pane` notification bar.
 
 - **Audio Feedback:** Includes a custom HTML5 audio chime on completion, which can be independently toggled on or off in the extension settings.
 
 - **Context Menu & Tools Integration:** Provides a dedicated entry in Thunderbird's top **Tools** menu and right-click context menu options in the folder pane (`Compact folders with PurgPak`) for targeted single-account or single-folder execution.
-
 
 ---
 
@@ -39,7 +40,6 @@ Developed and maintained by **CybTekSol [ https://github.com/CybTekSol ]** as a 
 - **Thunderbird Version:** 128.0 and Newer
 
 - **OS Tested:** Windows 10/11 (including IoT Enterprise / LTSC), Linux (LMDE7, Arch/EndeavourOS), macOS.
-
 
 ---
 
@@ -52,7 +52,7 @@ PurgPak utilizes a hybrid "Thin Bridge" pattern to survive Thunderbird's rapid r
 ## Installation
 
 ### Manual Install (.xpi)
-1. Download the latest `PurgPak-v1.6.0.xpi` from the [Releases](https://github.com/CybTekSol/PurgPak/releases) section.
+1. Download the latest `PurgPak-v1.6.5.xpi` from the [Releases](https://github.com/CybTekSol/PurgPak/releases) section.
 
 2. In Thunderbird, open **Tools > Add-ons and Themes** (or press `Ctrl + Shift + A`).
 3. Click the gear icon in the top right and select **Install Add-on From File...**
@@ -77,23 +77,26 @@ PurgPak utilizes a hybrid "Thin Bridge" pattern to survive Thunderbird's rapid r
 ## Frequently Asked Questions
 
 **Q: Can PurgPak expunge IMAP messages that are "Just marked as deleted" without restarting Thunderbird?**  
-**A:** Yes! If your IMAP account is set to *When I delete a message > Just mark it as deleted*, those messages linger in your Inbox with a strikethrough until the server receives an `EXPUNGE` command. In Thunderbird's architecture, the **Compact** action is what actually triggers this expunge command. 
+**A:** Yes! If your IMAP account is set to *When I delete a message > Just mark it as deleted*, those messages linger in your Inbox with a strikethrough until the server receives an `EXPUNGE` command. PurgPak actively detects messages carrying the `ImapDeleted` strikethrough flag and issues both a native IMAP `expunge` and folder `compact` command.
 
 To clear this clutter on demand:
 1. Open PurgPak's Options and ensure the **Compact** toggle is enabled for your accounts.
 
 2. Whenever your Inbox (or Unified Inbox) gets too cluttered with strikethrough emails, simply click the PurgPak toolbar button (or use the new Tools / right-click folder menu options). 
 
-PurgPak will instantly compact your folders, issuing the `EXPUNGE` command to your server and wiping away the strikethrough messages without ever needing to restart the application.
+PurgPak will instantly expunge and compact your folders, wiping away the strikethrough messages without ever needing to restart the application.
 
 ---
 
 ## Changelog
 
+### Changes in version 1.6.5:
+- **Native XPCOM Descendants Traversal (GMX & European IMAP Fix):** Replaced WebExtension folder tree recursion with direct XPCOM `rootFolder.descendants` traversal and native `nsMsgFolderFlags` bitmask inspection (`Trash`, `Junk`, `Inbox`), resolving `INBOX.` namespace mismatches and localized `prettyName` vs. `URI` discrepancies on GMX.com and European mail servers.
+- **Explicit IMAP Expunge & Strikethrough Detection:** Added native `ImapDeleted` message flag inspection and explicit `nativeFolder.expunge()` execution prior to compaction, ensuring IMAP accounts configured with *"Just mark it as deleted"* reliably clear strikethrough messages across all accounts even when local `expungedBytes` reports zero.
+
 ### Changes in version 1.6.0:
-- **GMX & International Compatibility:** Expanded folder name matching and integrated modern `specialUse` flag inspection to ensure non-standard or localized IMAP folder setups (such as GMX's `Spamverdacht`, `Bulk Mail`, or nested paths) are correctly detected and processed.
 - **Menu Integration:** Added a dedicated "Run PurgPak" entry to Thunderbird's top **Tools** menu and a right-click folder pane option (`Compact folders with PurgPak`) for executing targeted cleans on specific accounts or folder trees.
-- **Robust IMAP Purging & Compacting:** Enhanced the XPCOM background backend to correctly await asynchronous IMAP message deletions and handle forced compact operations on un-cached folders.
+- **Asynchronous IMAP Purge Handling:** Upgraded `deleteMessages` in `implementation.js` to await `nsIMsgCopyServiceListener` completion callbacks before triggering folder compaction, preventing IMAP folder-lock collisions and ensuring accurate message purge counts.
 
 ### Changes in version 1.5.0:
 - Major feature update! Added the ability to customize Junk/Trash/Compact settings individually for each e-mail account instead of globally (Thanks to user NotARealGit for the request!).
@@ -102,14 +105,11 @@ PurgPak will instantly compact your folders, issuing the `EXPUNGE` command to yo
 
 - Note on Upgrading: PurgPak will attempt to automatically migrate your old global settings to the new per-account system. Please review your Options after updating to ensure everything is set to your liking. If your settings look incorrect after the update, simply set your checkboxes and click Save Settings to force a clean refresh of your profile. Please POST any issues you have with this release so I can address them!
 
-
 ### Changes in version 1.4.2:
 - Added an independent **Show summary notification upon completion** toggle and an independent **Play notification sound upon completion** toggle in the PurgPak Configuration settings at user NotARealGit's request, allowing users to mute the completion chime while keeping visual summary banners active (or vice versa) or to enable/disable both.
 
-
 ### Changes in version 1.4.1:
 - The Toolbar Button has been changed to simply "PurgPak" instead of "Run PurgPak" at user BY-Joe's request. Code remains unaltered.
-
 
 ---
 
