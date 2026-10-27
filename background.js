@@ -2,8 +2,25 @@
 
 import { runPurgPak, runPurgPakTarget } from "./modules/engine.mjs";
 
-// Create Tools menu and Folder Pane right-click menu entries
+console.warn("PurgPak [v1.7.0]: background.js module loaded and active.");
+
+if (browser.browserAction && browser.browserAction.onClicked) {
+  browser.browserAction.onClicked.addListener(async () => {
+    console.warn("PurgPak [v1.7.0]: Toolbar button clicked -> starting runPurgPak().");
+    try {
+      await runPurgPak();
+    } catch (err) {
+      console.error("PurgPak [v1.7.0]: Toolbar execution error:", err);
+    }
+  });
+}
+
 async function setupMenus() {
+  if (!browser.menus) {
+    console.warn("PurgPak [v1.7.0]: browser.menus API not available.");
+    return;
+  }
+
   try {
     await browser.menus.removeAll();
 
@@ -18,34 +35,30 @@ async function setupMenus() {
       title: "Compact folders with PurgPak",
       contexts: ["folder_pane"]
     });
+
+    console.warn("PurgPak [v1.7.0]: Tools menu and Folder Pane context menu registered.");
   } catch (err) {
-    console.error("PurgPak: Error creating menu items:", err);
+    console.error("PurgPak [v1.7.0]: Error setting up menus:", err);
   }
 }
 
-setupMenus();
-
-// Toolbar button listener
-browser.browserAction.onClicked.addListener(async () => {
-  try {
-    await runPurgPak();
-  } catch (err) {
-    console.error("PurgPak: Execution failed:", err);
-  }
-});
-
-// Menu click listener (Tools menu & Right-click Folder Pane)
-browser.menus.onClicked.addListener(async (info) => {
-  try {
-    if (info.menuItemId === "purgpak-tools-menu") {
-      await runPurgPak();
-    } else if (info.menuItemId === "purgpak-folder-context") {
-      await runPurgPakTarget({
-        selectedFolder: info.selectedFolder || null,
-        selectedAccount: info.selectedAccount || null
-      });
+if (browser.menus && browser.menus.onClicked) {
+  browser.menus.onClicked.addListener(async (info) => {
+    try {
+      if (info.menuItemId === "purgpak-tools-menu") {
+        console.warn("PurgPak [v1.7.0]: Tools menu item clicked -> starting runPurgPak().");
+        await runPurgPak();
+      } else if (info.menuItemId === "purgpak-folder-context") {
+        console.warn("PurgPak [v1.7.0]: Folder Pane context menu clicked -> starting runPurgPakTarget().");
+        await runPurgPakTarget({
+          selectedFolder: info.selectedFolder || null,
+          selectedAccount: info.selectedAccount || null
+        });
+      }
+    } catch (err) {
+      console.error("PurgPak [v1.7.0]: Menu click execution error:", err);
     }
-  } catch (err) {
-    console.error("PurgPak: Menu execution failed:", err);
-  }
-});
+  });
+}
+
+setupMenus();
