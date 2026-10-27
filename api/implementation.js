@@ -30,9 +30,10 @@ try {
 }
 
 // Native XPCOM Folder & Message Bitmasks
-const FLAG_TRASH = Ci.nsMsgFolderFlags?.Trash || 0x00000100;
-const FLAG_JUNK  = Ci.nsMsgFolderFlags?.Junk  || 0x40000000;
-const FLAG_INBOX = Ci.nsMsgFolderFlags?.Inbox || 0x00001000;
+const FLAG_VIRTUAL = Ci.nsMsgFolderFlags?.Virtual || 0x00000020;
+const FLAG_TRASH   = Ci.nsMsgFolderFlags?.Trash   || 0x00000100;
+const FLAG_INBOX   = Ci.nsMsgFolderFlags?.Inbox   || 0x00001000;
+const FLAG_JUNK    = Ci.nsMsgFolderFlags?.Junk    || 0x40000000;
 const MSG_FLAG_IMAP_DELETED = 0x00200000;
 
 const JUNK_NAMES = new Set([
@@ -45,25 +46,39 @@ const TRASH_NAMES = new Set([
 
 var PurgPakAPI = class extends ExtensionCommon.ExtensionAPI {
   getAPI(context) {
-    // Resolve a WebExtension folder OR walk XPCOM rootFolder.descendants directly
     function getNativeFolder(folder) {
       if (!folder) return null;
-      try {
-        if (context.extension.folderManager) {
+
+      // 1. If requesting account root ("/"), go straight to MailServices.accounts
+      if (folder.accountId && (!folder.path || folder.path === "/")) {
+        try {
+          let account = MailServices.accounts.getAccount(folder.accountId);
+          if (account && account.incomingServer && account.incomingServer.rootFolder) {
+            return account.incomingServer.rootFolder;
+          }
+        } catch (err) {}
+      }
+
+      // 2. Try context.extension.folderManager in its own isolated try/catch
+      if (context.extension && context.extension.folderManager && folder.accountId && folder.path && folder.path !== "/") {
+        try {
           let found = context.extension.folderManager.get(folder.accountId, folder.path);
           if (found) return found;
-        }
-        if (folder.accountId) {
+        } catch (e) {}
+      }
+
+      // 3. Fallback: walk XPCOM rootFolder.descendants directly
+      if (folder.accountId) {
+        try {
           let account = MailServices.accounts.getAccount(folder.accountId);
-          if (account && account.incomingServer) {
+          if (account && account.incomingServer && account.incomingServer.rootFolder) {
             let root = account.incomingServer.rootFolder;
             if (!folder.path || folder.path === "/") return root;
 
-            let targetPath = folder.path.toLowerCase();
-            let targetName = (folder.name || "").trim().toLowerCase();
-
-            // Walk all XPCOM descendants directly to bypass GMX INBOX. namespace quirks
+            let targetPath = String(folder.path).toLowerCase();
+            let targetName = String(folder.name || "").trim().toLowerCase();
             let allFolders = root.descendants;
+
             for (let f of allFolders) {
               try {
                 let uriDecoded = decodeURIComponent(f.URI || "").toLowerCase();
@@ -73,47 +88,88 @@ var PurgPakAPI = class extends ExtensionCommon.ExtensionAPI {
               } catch (e) {}
             }
             for (let f of allFolders) {
-              if ((f.prettyName || "").trim().toLowerCase() === targetName ||
-                  (f.name || "").trim().toLowerCase() === targetName) {
+              if (String(f.prettyName || "").trim().toLowerCase() === targetName ||
+                  String(f.name || "").trim().toLowerCase() === targetName) {
                 return f;
               }
             }
           }
-        }
-      } catch (err) {
-        console.error("PurgPak [DIAG]: Error resolving native folder:", err);
+        } catch (err) {}
       }
+
       return null;
+    }
+
+    // Expand Virtual/Unified folders (e.g. Betterbird/Thunderbird "smart mailboxes") into their real underlying folders
+    function expandVirtualFolder(msgFolder) {
+      let realFolders = [];
+      try {
+        let dbFolderInfo = msgFolder.msgDatabase && msgFolder.msgDatabase.dBFolderInfo;
+        if (dbFolderInfo) {
+          let srchUris = dbFolderInfo.getCharProperty("searchFolderUri");
+          if (srchUris) {
+            let uriList = srchUris.split("|");
+            for (let u of uriList) {
+              if (!u) continue;
+              try {
+                let realF = MailServices.folderLookup.getFolderForURL(u);
+                if (realF && !realF.isServer) {
+                  realFolders.push(realF);
+                }
+              } catch (e) {}
+            }
+          }
+        }
+      } catch (e) {}
+      return realFolders;
     }
 
     // Collect a native folder and all of its XPCOM descendants
     function getSelfAndDescendants(nativeFolder) {
       let list = [];
-      if (!nativeFolder) return list;
-      if (!nativeFolder.isServer) {
-        list.push(nativeFolder);
+      let seenUris = new Set();
+
+      function addFolder(f) {
+        if (!f || f.isServer) return;
+        if ((f.flags & FLAG_VIRTUAL) !== 0) {
+          let underlying = expandVirtualFolder(f);
+          for (let realF of underlying) {
+            if (realF && !realF.isServer && !seenUris.has(realF.URI)) {
+              seenUris.add(realF.URI);
+              list.push(realF);
+            }
+          }
+          return;
+        }
+        if (!seenUris.has(f.URI)) {
+          seenUris.add(f.URI);
+          list.push(f);
+        }
       }
+
+      if (!nativeFolder) return list;
+      addFolder(nativeFolder);
+
       try {
         let desc = nativeFolder.descendants;
         if (desc) {
           for (let f of desc) {
-            if (f && !f.isServer) {
-              list.push(f);
-            }
+            addFolder(f);
           }
         }
       } catch (e) {}
+
       return list;
     }
 
     function isNativeJunk(msgFolder) {
       if (!msgFolder || msgFolder.isServer) return false;
       if ((msgFolder.flags & FLAG_JUNK) !== 0) return true;
-      let pName = (msgFolder.prettyName || "").trim().toLowerCase();
-      let rName = (msgFolder.name || "").trim().toLowerCase();
+      let pName = String(msgFolder.prettyName || "").trim().toLowerCase();
+      let rName = String(msgFolder.name || "").trim().toLowerCase();
       let uriLeaf = "";
       try {
-        uriLeaf = decodeURIComponent((msgFolder.URI || "").split("/").pop()).trim().toLowerCase();
+        uriLeaf = decodeURIComponent(String(msgFolder.URI || "").split("/").pop()).trim().toLowerCase();
       } catch (e) {}
       return (JUNK_NAMES.has(pName) || JUNK_NAMES.has(rName) || JUNK_NAMES.has(uriLeaf));
     }
@@ -121,11 +177,11 @@ var PurgPakAPI = class extends ExtensionCommon.ExtensionAPI {
     function isNativeTrash(msgFolder) {
       if (!msgFolder || msgFolder.isServer) return false;
       if ((msgFolder.flags & FLAG_TRASH) !== 0) return true;
-      let pName = (msgFolder.prettyName || "").trim().toLowerCase();
-      let rName = (msgFolder.name || "").trim().toLowerCase();
+      let pName = String(msgFolder.prettyName || "").trim().toLowerCase();
+      let rName = String(msgFolder.name || "").trim().toLowerCase();
       let uriLeaf = "";
       try {
-        uriLeaf = decodeURIComponent((msgFolder.URI || "").split("/").pop()).trim().toLowerCase();
+        uriLeaf = decodeURIComponent(String(msgFolder.URI || "").split("/").pop()).trim().toLowerCase();
       } catch (e) {}
       return (TRASH_NAMES.has(pName) || TRASH_NAMES.has(rName) || TRASH_NAMES.has(uriLeaf));
     }
@@ -156,7 +212,7 @@ var PurgPakAPI = class extends ExtensionCommon.ExtensionAPI {
       return count;
     }
 
-    async function purgeFolderMessages(nativeFolder, label) {
+    async function purgeFolderMessages(nativeFolder) {
       if (!nativeFolder || nativeFolder.isServer) return { messages: 0, bytes: 0 };
 
       let initialBytes = getFolderDiskSize(nativeFolder);
@@ -175,12 +231,11 @@ var PurgPakAPI = class extends ExtensionCommon.ExtensionAPI {
         }
 
         deletedCount = array.length;
-        console.info(`PurgPak [DIAG] [${label}]: Inspecting "${nativeFolder.prettyName}" -> Found ${deletedCount} messages to purge.`);
 
         if (deletedCount > 0) {
           await new Promise((resolve) => {
             let settled = false;
-            let finish = (reason) => {
+            let finish = () => {
               if (!settled) {
                 settled = true;
                 resolve();
@@ -189,7 +244,7 @@ var PurgPakAPI = class extends ExtensionCommon.ExtensionAPI {
 
             let win = Services.wm.getMostRecentWindow("mail:3pane");
             if (win && win.setTimeout) {
-              win.setTimeout(() => finish("timeout"), 4000);
+              win.setTimeout(finish, 4000);
             }
 
             let copyListener = {
@@ -199,21 +254,18 @@ var PurgPakAPI = class extends ExtensionCommon.ExtensionAPI {
               SetMessageKey: function(aKey) {},
               GetMessageId: function(aMessageId) {},
               OnStopCopy: function(aStatus) {
-                finish("OnStopCopy");
+                finish();
               }
             };
 
             try {
               nativeFolder.deleteMessages(array, null, true, false, copyListener, false);
             } catch (innerErr) {
-              console.warn("PurgPak [DIAG]: deleteMessages exception:", innerErr);
-              finish("exception");
+              finish();
             }
           });
         }
-      } catch (err) {
-        console.warn("PurgPak [DIAG]: purgeFolderMessages exception:", err);
-      }
+      } catch (err) {}
 
       let finalBytes = getFolderDiskSize(nativeFolder);
 
@@ -226,21 +278,25 @@ var PurgPakAPI = class extends ExtensionCommon.ExtensionAPI {
     async function compactSingleNativeFolder(nativeFolder, forceCompact) {
       if (!nativeFolder || nativeFolder.isServer) return { messages: 0, bytes: 0 };
 
-      let isImap = (nativeFolder.server && nativeFolder.server.type === "imap");
+      let isImap = Boolean(nativeFolder.server && nativeFolder.server.type === "imap");
       let isInbox = ((nativeFolder.flags & FLAG_INBOX) !== 0);
       let expungedBytes = nativeFolder.expungedBytes || 0;
       let hasExpunged = (expungedBytes > 0);
       let strikethroughCount = isImap ? countImapDeletedMessages(nativeFolder) : 0;
       let hasStrikethrough = (strikethroughCount > 0);
 
-      if (!forceCompact && !hasExpunged && !hasStrikethrough && !(isImap && isInbox)) {
+      if (!isImap && !forceCompact && !hasExpunged) {
+        return { messages: 0, bytes: 0 };
+      }
+
+      if (isImap && !forceCompact && !hasExpunged && !hasStrikethrough && !isInbox) {
         return { messages: 0, bytes: 0 };
       }
 
       let initialBytes = getFolderDiskSize(nativeFolder);
 
       // Step 1: Explicit IMAP EXPUNGE for strikethrough messages
-      if (isImap && typeof nativeFolder.expunge === "function" && (forceCompact || hasStrikethrough || hasExpunged || isInbox)) {
+      if (isImap && typeof nativeFolder.expunge === "function") {
         await new Promise((resolve) => {
           let settled = false;
           let finish = () => {
@@ -272,7 +328,7 @@ var PurgPakAPI = class extends ExtensionCommon.ExtensionAPI {
       }
 
       // Step 2: Compact local/offline store
-      if (forceCompact || nativeFolder.expungedBytes > 0 || hasExpunged) {
+      if (forceCompact || isImap || nativeFolder.expungedBytes > 0 || hasExpunged) {
         await new Promise((resolve) => {
           let settled = false;
           let finish = () => {
@@ -298,7 +354,6 @@ var PurgPakAPI = class extends ExtensionCommon.ExtensionAPI {
           try {
             nativeFolder.compact(compactListener, null);
           } catch (err) {
-            console.warn("PurgPak: Native compact exception:", err);
             finish();
           }
         });
@@ -319,13 +374,13 @@ var PurgPakAPI = class extends ExtensionCommon.ExtensionAPI {
           let startFolder = getNativeFolder(folder);
           if (!startFolder) return { messages: 0, bytes: 0 };
 
-          let candidates = folder._scanAll ? getSelfAndDescendants(startFolder) : [startFolder];
+          let candidates = folder._scanAll ? getSelfAndDescendants(startFolder) : getSelfAndDescendants(startFolder).slice(0, 1);
           let totalMessages = 0;
           let totalBytes = 0;
 
           for (let f of candidates) {
             if (!folder._scanAll || isNativeTrash(f)) {
-              let res = await purgeFolderMessages(f, "Trash");
+              let res = await purgeFolderMessages(f);
               totalMessages += res.messages || 0;
               totalBytes += res.bytes || 0;
             }
@@ -338,13 +393,13 @@ var PurgPakAPI = class extends ExtensionCommon.ExtensionAPI {
           let startFolder = getNativeFolder(folder);
           if (!startFolder) return { messages: 0, bytes: 0 };
 
-          let candidates = folder._scanAll ? getSelfAndDescendants(startFolder) : [startFolder];
+          let candidates = folder._scanAll ? getSelfAndDescendants(startFolder) : getSelfAndDescendants(startFolder).slice(0, 1);
           let totalMessages = 0;
           let totalBytes = 0;
 
           for (let f of candidates) {
             if (!folder._scanAll || isNativeJunk(f)) {
-              let res = await purgeFolderMessages(f, "Junk");
+              let res = await purgeFolderMessages(f);
               totalMessages += res.messages || 0;
               totalBytes += res.bytes || 0;
             }
@@ -357,7 +412,7 @@ var PurgPakAPI = class extends ExtensionCommon.ExtensionAPI {
           let startFolder = getNativeFolder(folder);
           if (!startFolder) return { messages: 0, bytes: 0 };
 
-          let candidates = folder._scanAll ? getSelfAndDescendants(startFolder) : [startFolder];
+          let candidates = folder._scanAll ? getSelfAndDescendants(startFolder) : getSelfAndDescendants(startFolder);
           let totalBytes = 0;
 
           for (let f of candidates) {
@@ -386,7 +441,7 @@ var PurgPakAPI = class extends ExtensionCommon.ExtensionAPI {
               }
 
               let priority = notifyBox.PRIORITY_INFO_HIGH || 5;
-              let bannerText = `${title}: ${message.replace(/\n/g, " — ")}`;
+              let bannerText = String(title) + ": " + String(message).replace(/\n/g, " — ");
 
               notifyBox.appendNotification(
                 notificationId,
@@ -408,9 +463,7 @@ var PurgPakAPI = class extends ExtensionCommon.ExtensionAPI {
                 }, 6000);
               }
             }
-          } catch (err) {
-            console.warn("PurgPak: In-app notification failed:", err);
-          }
+          } catch (err) {}
         }
       }
     };
