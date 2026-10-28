@@ -17,7 +17,7 @@ function displaySummary(stats, prefs) {
 
     if (prefs.play_sound) {
       let audio = new Audio(browser.runtime.getURL("sounds/notify.mp3"));
-      audio.play().catch(err => console.warn("PurgPak [v1.7.0]: Audio playback failed:", err));
+      audio.play().catch(() => {});
     }
 
     if (prefs.notify_summary) {
@@ -33,7 +33,7 @@ function displaySummary(stats, prefs) {
       }
     }
   } catch (ex) {
-    console.error("PurgPak [v1.7.0]: Error displaying summary:", ex);
+    console.error("PurgPak: Error displaying summary:", ex);
   }
 }
 
@@ -76,15 +76,10 @@ export async function runPurgPak() {
   let totalStats = { messages: 0, bytes: 0 };
   let rules = prefs.account_rules || {};
 
-  console.warn("PurgPak [v1.7.0]: Starting runPurgPak() across " + String(accounts.length) + " accounts.");
-
   try {
     for (let account of accounts) {
       let accRules = rules[account.id] || { enabled: true, clean_junk: true, clean_trash: true, run_compact: true };
-      if (!accRules.enabled) {
-        console.warn("PurgPak [v1.7.0]: Skipping disabled account " + String(account.name || account.id));
-        continue;
-      }
+      if (!accRules.enabled) continue;
 
       let accountRootPayload = {
         accountId: account.id,
@@ -95,7 +90,7 @@ export async function runPurgPak() {
       await processTargetRoot(accountRootPayload, accRules, totalStats, false);
     }
   } catch (err) {
-    console.error("PurgPak [v1.7.0]: Error during account traversal:", err);
+    console.error("PurgPak: Error during account traversal:", err);
   } finally {
     displaySummary(totalStats, prefs);
   }
@@ -107,27 +102,33 @@ export async function runPurgPakTarget(target) {
   const prefs = await getPreferences();
   let totalStats = { messages: 0, bytes: 0 };
   let rules = prefs.account_rules || {};
-
-  console.warn("PurgPak [v1.7.0]: Starting targeted runPurgPakTarget().");
+  let defaultRules = { enabled: true, clean_junk: true, clean_trash: true, run_compact: true };
 
   try {
-    if (target.selectedFolder) {
+    if (target && target.selectedFolder) {
       let folder = target.selectedFolder;
-      let accRules = rules[folder.accountId] || { enabled: true, clean_junk: true, clean_trash: true, run_compact: true };
+      let accRules = rules[folder.accountId] || defaultRules;
       let folderPayload = Object.assign({}, folder, { _scanAll: true });
       await processTargetRoot(folderPayload, accRules, totalStats, true);
-    } else if (target.selectedAccount) {
+    } else if (target && target.selectedAccount) {
       let accountId = target.selectedAccount.id;
-      let accRules = rules[accountId] || { enabled: true, clean_junk: true, clean_trash: true, run_compact: true };
+      let accRules = rules[accountId] || defaultRules;
       let accountRootPayload = {
         accountId: accountId,
         path: "/",
         _scanAll: true
       };
       await processTargetRoot(accountRootPayload, accRules, totalStats, true);
+    } else {
+      // Fallback when Betterbird/Thunderbird right-clicks a Unified Folder and omits selectedFolder
+      let activePayload = {
+        _useActiveSelection: true,
+        _scanAll: true
+      };
+      await processTargetRoot(activePayload, defaultRules, totalStats, true);
     }
   } catch (err) {
-    console.error("PurgPak [v1.7.0]: Error during targeted execution:", err);
+    console.error("PurgPak: Error during targeted execution:", err);
   } finally {
     displaySummary(totalStats, prefs);
   }
