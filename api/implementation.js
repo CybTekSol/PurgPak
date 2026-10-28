@@ -3,7 +3,7 @@
 const { classes: Cc, interfaces: Ci } = Components;
 
 // --- Self-Healing Mozilla Module Imports ---
-let ExtensionCommon, MailServices, Services;
+let ExtensionCommon, MailServices, Services, VirtualFolderHelper;
 
 try {
   ExtensionCommon = ChromeUtils.importESModule("resource://gre/modules/ExtensionCommon.sys.mjs").ExtensionCommon;
@@ -29,12 +29,30 @@ try {
   }
 }
 
+try {
+  VirtualFolderHelper = ChromeUtils.importESModule("resource:///modules/VirtualFolderWrapper.sys.mjs").VirtualFolderHelper;
+} catch (e) {
+  try {
+    if (typeof ChromeUtils.import === "function") {
+      VirtualFolderHelper = ChromeUtils.import("resource:///modules/VirtualFolderWrapper.jsm").VirtualFolderHelper;
+    }
+  } catch (e2) {}
+}
+
 // Native XPCOM Folder & Message Bitmasks
-const FLAG_VIRTUAL = Ci.nsMsgFolderFlags?.Virtual || 0x00000020;
-const FLAG_TRASH   = Ci.nsMsgFolderFlags?.Trash   || 0x00000100;
-const FLAG_INBOX   = Ci.nsMsgFolderFlags?.Inbox   || 0x00001000;
-const FLAG_JUNK    = Ci.nsMsgFolderFlags?.Junk    || 0x40000000;
+const FLAG_VIRTUAL   = Ci.nsMsgFolderFlags?.Virtual   || 0x00000020;
+const FLAG_TRASH     = Ci.nsMsgFolderFlags?.Trash     || 0x00000100;
+const FLAG_SENTMAIL  = Ci.nsMsgFolderFlags?.SentMail  || 0x00000200;
+const FLAG_DRAFTS    = Ci.nsMsgFolderFlags?.Drafts    || 0x00000400;
+const FLAG_INBOX     = Ci.nsMsgFolderFlags?.Inbox     || 0x00001000;
+const FLAG_ARCHIVE   = Ci.nsMsgFolderFlags?.Archive   || 0x00004000;
+const FLAG_TEMPLATES = Ci.nsMsgFolderFlags?.Templates || 0x00400000;
+const FLAG_JUNK      = Ci.nsMsgFolderFlags?.Junk      || 0x40000000;
 const MSG_FLAG_IMAP_DELETED = 0x00200000;
+
+const SPECIAL_FOLDER_FLAGS = [
+  FLAG_INBOX, FLAG_TRASH, FLAG_JUNK, FLAG_SENTMAIL, FLAG_DRAFTS, FLAG_ARCHIVE, FLAG_TEMPLATES
+];
 
 const JUNK_NAMES = new Set([
   "junk", "junk e-mail", "junk email", "spam", "spamverdacht", "bulk", "bulk mail", "pourriel", "correo no deseado"
@@ -46,10 +64,44 @@ const TRASH_NAMES = new Set([
 
 var PurgPakAPI = class extends ExtensionCommon.ExtensionAPI {
   getAPI(context) {
+    // Fallback: get currently selected/right-clicked folder directly from Thunderbird/Betterbird about:3pane
+    function getActive3PaneFolder() {
+      try {
+        let win = Services.wm.getMostRecentWindow("mail:3pane");
+        if (!win) return null;
+        let tabmail = win.document.getElementById("tabmail") || win.gTabmail;
+        let about3Pane = tabmail?.currentAbout3Pane || win.gTabmail?.currentAbout3Pane;
+        if (about3Pane) {
+          if (about3Pane.gFolder) {
+            return about3Pane.gFolder;
+          }
+          let uri = about3Pane.folderTree?.selectedRow?.uri;
+          if (uri) {
+            return MailServices.folderLookup.getFolderForURL(uri);
+          }
+        }
+      } catch (e) {}
+      return null;
+    }
+
     function getNativeFolder(folder) {
       if (!folder) return null;
 
-      // 1. If requesting account root ("/"), go straight to MailServices.accounts
+      // 0. If Betterbird omitted selectedFolder on a Unified Folder right-click, grab from about:3pane
+      if (folder._useActiveSelection) {
+        let activeF = getActive3PaneFolder();
+        if (activeF) return activeF;
+      }
+
+      // 1. If WebExtension passed a folder URI or id directly
+      if (folder.id && typeof folder.id === "string" && folder.id.includes("://")) {
+        try {
+          let byUri = MailServices.folderLookup.getFolderForURL(folder.id);
+          if (byUri) return byUri;
+        } catch (e) {}
+      }
+
+      // 2. If requesting account root ("/"), go straight to MailServices.accounts
       if (folder.accountId && (!folder.path || folder.path === "/")) {
         try {
           let account = MailServices.accounts.getAccount(folder.accountId);
@@ -59,7 +111,7 @@ var PurgPakAPI = class extends ExtensionCommon.ExtensionAPI {
         } catch (err) {}
       }
 
-      // 2. Try context.extension.folderManager in its own isolated try/catch
+      // 3. Try context.extension.folderManager in its own isolated try/catch
       if (context.extension && context.extension.folderManager && folder.accountId && folder.path && folder.path !== "/") {
         try {
           let found = context.extension.folderManager.get(folder.accountId, folder.path);
@@ -67,7 +119,7 @@ var PurgPakAPI = class extends ExtensionCommon.ExtensionAPI {
         } catch (e) {}
       }
 
-      // 3. Fallback: walk XPCOM rootFolder.descendants directly
+      // 4. Fallback: walk XPCOM rootFolder.descendants directly
       if (folder.accountId) {
         try {
           let account = MailServices.accounts.getAccount(folder.accountId);
@@ -97,30 +149,80 @@ var PurgPakAPI = class extends ExtensionCommon.ExtensionAPI {
         } catch (err) {}
       }
 
-      return null;
+      // 5. Final fallback to active 3pane selection if a Unified Folder wasn't in standard accounts
+      return getActive3PaneFolder();
     }
 
     // Expand Virtual/Unified folders (e.g. Betterbird/Thunderbird "smart mailboxes") into their real underlying folders
     function expandVirtualFolder(msgFolder) {
       let realFolders = [];
-      try {
-        let dbFolderInfo = msgFolder.msgDatabase && msgFolder.msgDatabase.dBFolderInfo;
-        if (dbFolderInfo) {
-          let srchUris = dbFolderInfo.getCharProperty("searchFolderUri");
-          if (srchUris) {
-            let uriList = srchUris.split("|");
-            for (let u of uriList) {
-              if (!u) continue;
-              try {
-                let realF = MailServices.folderLookup.getFolderForURL(u);
-                if (realF && !realF.isServer) {
-                  realFolders.push(realF);
-                }
-              } catch (e) {}
+      let seen = new Set();
+
+      function pushReal(rf) {
+        if (rf && !rf.isServer && ((rf.flags & FLAG_VIRTUAL) === 0) && !seen.has(rf.URI)) {
+          seen.add(rf.URI);
+          realFolders.push(rf);
+        }
+      }
+
+      // Method A: Official Thunderbird 128+ VirtualFolderHelper
+      if (VirtualFolderHelper) {
+        try {
+          let wrapped = VirtualFolderHelper.wrapVirtualFolder(msgFolder);
+          if (wrapped && wrapped.searchFolders) {
+            for (let rf of wrapped.searchFolders) {
+              pushReal(rf);
             }
           }
-        }
-      } catch (e) {}
+        } catch (e) {}
+      }
+
+      // Method B: Direct dBFolderInfo property lookup
+      if (realFolders.length === 0) {
+        try {
+          let dbFolderInfo = msgFolder.msgDatabase && msgFolder.msgDatabase.dBFolderInfo;
+          if (dbFolderInfo) {
+            let srchUris = dbFolderInfo.getCharProperty("searchFolderUri");
+            if (srchUris) {
+              let uriList = srchUris.split("|");
+              for (let u of uriList) {
+                if (!u) continue;
+                try {
+                  let realF = MailServices.folderLookup.getFolderForURL(u);
+                  pushReal(realF);
+                } catch (e) {}
+              }
+            }
+          }
+        } catch (e) {}
+      }
+
+      // Method C: If Unified Folder still returned 0 (e.g. unopened smart mailbox DB), match its special flag across all real accounts
+      if (realFolders.length === 0) {
+        try {
+          let matchedFlag = 0;
+          for (let fl of SPECIAL_FOLDER_FLAGS) {
+            if ((msgFolder.flags & fl) !== 0) {
+              matchedFlag = fl;
+              break;
+            }
+          }
+          if (matchedFlag !== 0) {
+            let allAccounts = MailServices.accounts.accounts;
+            for (let acc of allAccounts) {
+              let srv = acc.incomingServer;
+              if (!srv || srv.type === "none" || String(srv.hostName) === "smart mailboxes") continue;
+              let desc = srv.rootFolder.descendants;
+              for (let f of desc) {
+                if ((f.flags & matchedFlag) !== 0) {
+                  pushReal(f);
+                }
+              }
+            }
+          }
+        } catch (e) {}
+      }
+
       return realFolders;
     }
 
@@ -131,7 +233,8 @@ var PurgPakAPI = class extends ExtensionCommon.ExtensionAPI {
 
       function addFolder(f) {
         if (!f || f.isServer) return;
-        if ((f.flags & FLAG_VIRTUAL) !== 0) {
+        let isSmartMailbox = String(f.URI || "").includes("smart%20mailboxes") || String(f.URI || "").includes("smart mailboxes");
+        if (((f.flags & FLAG_VIRTUAL) !== 0) || isSmartMailbox) {
           let underlying = expandVirtualFolder(f);
           for (let realF of underlying) {
             if (realF && !realF.isServer && !seenUris.has(realF.URI)) {
