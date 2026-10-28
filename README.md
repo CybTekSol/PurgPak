@@ -52,7 +52,7 @@ PurgPak utilizes a hybrid "Thin Bridge" pattern to survive Thunderbird's rapid r
 ## Installation
 
 ### Manual Install (.xpi)
-1. Download the latest `PurgPak-v1.7.0.xpi` from the [Releases](https://github.com/CybTekSol/PurgPak/releases) section.
+1. Download the latest `PurgPak-v1.7.5.xpi` from the [Releases](https://github.com/CybTekSol/PurgPak/releases) section.
 
 2. In Thunderbird/Betterbird, open **Tools > Add-ons and Themes** (or press `Ctrl + Shift + A`).
 3. Click the gear icon in the top right and select **Install Add-on From File...**
@@ -90,12 +90,23 @@ PurgPak will instantly expunge and compact your folders, wiping away the striket
 
 ## Changelog
 
+### Changes in version 1.7.5:
+- **Unified Folders (`smart mailboxes`) Support:** Native XPCOM Descendants Traversal (GMX & European IMAP Fix) modified and hopefully fixed for right-click (`Compact folders with PurgPak`).
+
 ### Changes in version 1.7.0:
 - **Unified Folders (`smart mailboxes`) Support:** Added native `nsMsgFolderFlags.Virtual` detection and `searchFolderUri` expansion so running PurgPak on a Unified Inbox or virtual folder automatically resolves, expunges, and compacts all underlying real IMAP/Local folders across all accounts.
 - **Betterbird & Thunderbird 128+ Root Resolution Fix:** Bypassed WebExtension `folderManager.get("/")` exceptions on server root paths by resolving account roots directly through `MailServices.accounts`.
 - **Native XPCOM Descendants Traversal (GMX & European IMAP Fix):** Replaced WebExtension folder tree recursion with direct XPCOM `rootFolder.descendants` traversal and native `nsMsgFolderFlags` bitmask inspection (`Trash`, `Junk`, `Inbox`), resolving `INBOX.` namespace mismatches and localized `prettyName` vs. `URI` discrepancies on GMX.com and European mail servers.
 - **Explicit IMAP Expunge & Strikethrough Detection:** Added native `ImapDeleted` message flag inspection and explicit `nativeFolder.expunge()` execution prior to compaction, ensuring IMAP accounts configured with *"Just mark it as deleted"* reliably clear strikethrough messages across all accounts even when local `expungedBytes` reports zero.
 - **Menu Integration:** Added a dedicated "Run PurgPak" entry to Thunderbird's top **Tools** menu and a right-click folder pane option (`Compact folders with PurgPak`) for executing targeted cleans on specific accounts, Unified Folders, or folder trees.
+
+### Changes in version 1.6.5:
+- **Native XPCOM Descendants Traversal (GMX & European IMAP Fix):** Replaced WebExtension folder tree recursion with direct XPCOM `rootFolder.descendants` traversal and native `nsMsgFolderFlags` bitmask inspection (`Trash`, `Junk`, `Inbox`), resolving `INBOX.` namespace mismatches and localized `prettyName` vs. `URI` discrepancies on GMX.com and European mail servers.
+- **Explicit IMAP Expunge & Strikethrough Detection:** Added native `ImapDeleted` message flag inspection and explicit `nativeFolder.expunge()` execution prior to compaction, ensuring IMAP accounts configured with *"Just mark it as deleted"* reliably clear strikethrough messages across all accounts even when local `expungedBytes` reports zero.
+
+### Changes in version 1.6.0:
+- **Menu Integration:** Added a dedicated "Run PurgPak" entry to Thunderbird's top **Tools** menu and a right-click folder pane option (`Compact folders with PurgPak`) for executing targeted cleans on specific accounts or folder trees.
+- **Asynchronous IMAP Purge Handling:** Upgraded `deleteMessages` in `implementation.js` to await `nsIMsgCopyServiceListener` completion callbacks before triggering folder compaction, preventing IMAP folder-lock collisions and ensuring accurate message purge counts.
 
 ### Changes in version 1.5.0:
 - Major feature update! Added the ability to customize Junk/Trash/Compact settings individually for each e-mail account instead of globally (Thanks to user NotARealGit for the request!).
